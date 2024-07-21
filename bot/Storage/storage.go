@@ -8,8 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/NazarKurii/vocbl/Chat"
-	"github.com/NazarKurii/vocbl/User"
+	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
+	"github.com/NazarKurii/Vocbl_2.0.git/User"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 

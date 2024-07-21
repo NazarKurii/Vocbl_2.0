@@ -3,31 +3,31 @@ package main
 import (
 	"fmt"
 
-	"github.com/NazarKurii/vocbl/Chat"
-	AddindProces "github.com/NazarKurii/vocbl/Components/AddingProcces"
-	"github.com/NazarKurii/vocbl/Expretion"
-	"github.com/NazarKurii/vocbl/ExpretionData"
-	"github.com/NazarKurii/vocbl/Storage"
-	"github.com/NazarKurii/vocbl/User"
+	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
+	AddindProces "github.com/NazarKurii/Vocbl_2.0.git/Components/AddingProcces"
+	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
+	"github.com/NazarKurii/Vocbl_2.0.git/ExpretionData"
+	"github.com/NazarKurii/Vocbl_2.0.git/Storage"
+	"github.com/NazarKurii/Vocbl_2.0.git/User"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 func main() {
-	//go Storage.VerifyStorage()
+	go Storage.VerifyStorage()
 
 	var bot, err = tgbotapi.NewBotAPI("7421574054:AAH1pp0hDxoNQPPxFF1x5x6viuC6PX7UlJ4")
 	if err != nil {
-		fmt.Println(err)
+		//do
 	}
 
-	bot.Debug = false
+	bot.Debug = true
 
 	var u = tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	var updates, err2 = bot.GetUpdatesChan(u)
 	if err2 != nil {
-		fmt.Println(err2)
+		//do
 	}
 
 	for update := range updates {
@@ -35,29 +35,32 @@ func main() {
 		if update.Message == nil {
 			continue
 		}
+		user, err1 := Storage.DefineUser(update.Message.Chat.ID)
 
-		var user, err = Storage.DefineUser(update.Message.Chat.ID)
-
-		if err != nil {
+		if err1 != nil {
 			user = Storage.CreateUser(bot, update.Message.Chat.ID, updates)
+		} else {
+			user.Chat = Chat.Chat{bot, updates, update.Message.Chat.ID}
 		}
 
-		user.Chat.Bot = bot
-		user.Chat.Updates = updates
-
 		switch update.Message.Text {
-
 		case "/add":
-			fmt.Println(",....")
-			addExpretion(bot, update.Message.Chat.ID, updates)
 
-		case "/remove":
+			addExpretion(user)
 
 		case "/card":
+			card(user)
+		case "/test":
+			//test(Chat.Chat{bot, updates, update.Message.Chat.ID})
 
+		case "/study":
+			//study(Chat.Chat{bot, updates, update.Message.Chat.ID})
+		default:
+			//Chat.Chat{bot, updates, update.Message.Chat.ID}.SendMessege("Unknown comand:(")
 		}
 
 	}
+
 }
 
 const (
@@ -77,15 +80,11 @@ func card(user User.User) {
 	}
 }
 
-func addExpretion(bot *tgbotapi.BotAPI, chatId int64, updates tgbotapi.UpdatesChannel) {
-	fmt.Println("....")
-	user, err1 := Storage.DefineUser(chatId)
-	if err1 != nil {
-		user = Storage.CreateUser(bot, chatId, updates)
-	}
+func addExpretion(user User.User) {
 
 	user.Chat.SendMessege("Expretion to tranlate:")
 	userReprly := user.Chat.GetUpdate()
+
 	var newExpretion = Expretion.Expretion{Data: userReprly}
 	if oldExpretion, exists := user.FindExpretion(userReprly); exists {
 		oldExpretion.Card(user.Chat.ChatId).Send(*user.Chat.Bot)
@@ -121,8 +120,9 @@ func addExpretion(bot *tgbotapi.BotAPI, chatId int64, updates tgbotapi.UpdatesCh
 	}
 
 	var data, err = ExpretionData.GetEpretionData(userReprly, ExpretionData.RequestAttemts)
+	fmt.Println(data, ".....................................")
 	if err != nil {
-		fmt.Println(err, "........................................")
+
 		if newExpretion, err = AddindProces.CustomAddindProcces(user, data, newExpretion); err != nil {
 			switch err {
 			case AddindProces.AgainError:
@@ -143,10 +143,11 @@ func addExpretion(bot *tgbotapi.BotAPI, chatId int64, updates tgbotapi.UpdatesCh
 
 		}
 	} else {
-		if newExpretion, err = AddindProces.CustomAddindProcces(user, data, newExpretion); err != nil {
+
+		if newExpretion, err = AddindProces.AutoAddindProcces(user, data, newExpretion); err != nil {
 			switch err {
 			case AddindProces.AgainError:
-				newExpretion, err = AddindProces.CustomAddindProcces(user, data, newExpretion)
+				newExpretion, err = AddindProces.AutoAddindProcces(user, data, newExpretion)
 				if err != nil {
 					switch err {
 					case AddindProces.AgainError:
@@ -155,14 +156,22 @@ func addExpretion(bot *tgbotapi.BotAPI, chatId int64, updates tgbotapi.UpdatesCh
 						user.Chat.SendMessege("Card wasn't added...")
 						user.Chat.SendMessege("What can I do for you😁?")
 					}
+				} else {
+					user.AddToUserStorage(newExpretion)
+					user.Chat.SendMessege("Translation added")
+					user.Chat.SendMessege("What can I do for you😁?")
+
 				}
 			case AddindProces.RefuseError:
 				user.Chat.SendMessege("Card wasn't added...")
 				user.Chat.SendMessege("What can I do for you😁?")
 			}
 
+		} else {
+			user.AddToUserStorage(newExpretion)
+			user.Chat.SendMessege("Translation added")
+			user.Chat.SendMessege("What can I do for you😁?")
+
 		}
 	}
-
-	user.AddToUserStorage(newExpretion)
 }

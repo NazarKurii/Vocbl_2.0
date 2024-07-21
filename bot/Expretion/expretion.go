@@ -3,6 +3,7 @@ package Expretion
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -64,14 +65,28 @@ func (c Card) Send(bot tgbotapi.BotAPI) {
 
 func (e Expretion) Card(chatId int64) Card {
 
-	card := fmt.Sprintf("• %v \n\nTranslation: %v", e.Data, e.TranslatedData)
+	card := fmt.Sprintf("• %v ", strings.ToUpper(e.Data))
+
+	card += "\n\nTranslations: "
+
+	last := len(e.TranslatedData) - 1
+	for i, translation := range e.TranslatedData {
+		if i != last {
+
+			card += translation + ", "
+		} else {
+			card += translation
+		}
+	}
 
 	if len(e.Examples) > 0 {
 		card += "\n\nExamples:"
 		for _, exapmle := range e.Examples {
 			card += fmt.Sprintf("\n-%v", exapmle)
 		}
+		card = card[:len(card)-1]
 	}
+
 	if e.Notes != "" {
 		card += fmt.Sprintf("\n\nNotes: %v", e.Notes)
 	}
@@ -81,23 +96,28 @@ func (e Expretion) Card(chatId int64) Card {
 		card += "\n\nPronunciation: " + e.Pronunciation
 	}
 
-	voiceFile, err := os.Open("e.PronunciationPath")
-
+	voiceFile, err := os.Open(e.PronunciationPath)
 	if err == nil {
+		defer voiceFile.Close()
 
 		voice := tgbotapi.NewVoiceUpload(chatId, tgbotapi.FileReader{
-			Name:   "",
+			Name:   "voice.ogg", // Assuming the file is an ogg file. Change if needed.
 			Reader: voiceFile,
 			Size:   -1,
 		})
 
 		voice.Caption = card
-		defer voiceFile.Close()
+
 		return Card{
-			voiceMsg: voice, voice: true,
+			voiceMsg: voice,
+			voice:    true,
 		}
 	} else {
-		defer voiceFile.Close()
-		return Card{msg: tgbotapi.NewMessage(chatId, card), voice: false}
+		fmt.Println("Error opening voice file:", err)
+		return Card{
+			msg:   tgbotapi.NewMessage(chatId, card),
+			voice: false,
+		}
 	}
+
 }

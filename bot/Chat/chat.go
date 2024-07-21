@@ -1,6 +1,7 @@
 package Chat
 
 import (
+	"fmt"
 	"math"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -82,42 +83,51 @@ func (chat Chat) GetUpdateFunc(f func(update tgbotapi.Update) int) int {
 
 }
 
+var bot, _ = tgbotapi.NewBotAPI("7421574054:AAH1pp0hDxoNQPPxFF1x5x6viuC6PX7UlJ4")
+
 func NewMenues(options []MessageComand, customInfo string) []tgbotapi.InlineKeyboardMarkup {
-	var optionBunches = make([][][]tgbotapi.InlineKeyboardButton, len(options))
+	var optionBunches = make([][][]tgbotapi.InlineKeyboardButton, int(math.Ceil(float64(len(options))/5)))
 
 	for i, option := range options {
 		optionBunches[i/5] = append(optionBunches[i/5], tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(option.Command, option.Callback)))
 	}
 
-	var max = len(optionBunches)
+	var max = len(optionBunches) - 1
+
+	fmt.Println(max, "MAXXXXXXXXX>>>>>>>>>>>>>>>>>?????????????")
 	var menues = make([]tgbotapi.InlineKeyboardMarkup, 0, len(optionBunches))
 	for i, options := range optionBunches {
 
 		var commandRaws = make([][]tgbotapi.InlineKeyboardButton, 2)
 
 		if i == 0 {
-			commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData("✖️", ""))
+			commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("✖️", "_"))
 		} else {
-			commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData("⬅️", "back"))
+			commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("⬅️", "back"))
 		}
 
-		commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData("Save", "save"))
+		commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("Save", "save"))
 
 		if i == max {
-			commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData("✖️", ""))
+			commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("✖️", "_"))
 		} else {
-			commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData("➡️", "forward"))
+			commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("➡️", "forward"))
 		}
 
-		commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData(customInfo, "custom"))
+		commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData(customInfo, "custom"))
 		menues = append(menues, tgbotapi.NewInlineKeyboardMarkup(append(options, commandRaws...)...))
 	}
+
 	return menues
 }
 func (chat Chat) SendMenue(replyMurkUp tgbotapi.InlineKeyboardMarkup, message string) int {
+	fmt.Println("Test3........................", chat.Bot == nil)
 	msg := tgbotapi.NewMessage(chat.ChatId, message)
 	msg.ReplyMarkup = replyMurkUp
-	sentMessage, _ := chat.Bot.Send(msg)
+	sentMessage, err := chat.Bot.Send(msg)
+	if err != nil {
+		panic(err)
+	}
 	return sentMessage.MessageID
 }
 

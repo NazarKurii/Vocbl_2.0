@@ -7,8 +7,8 @@ import (
 	"os"
 	"slices"
 
-	"github.com/NazarKurii/vocbl/Chat"
-	"github.com/NazarKurii/vocbl/Expretion"
+	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
+	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
 )
 
 type User struct {
@@ -76,7 +76,7 @@ func (user User) showListOfExpretions(expretions []Expretion.Expretion) {
 }
 
 func (user User) SaveUsersData() {
-	storage, _ := os.OpenFile("/home/nazar/nazzar/vocbl/sorage/storage.json", os.O_RDWR, 0644)
+	storage, _ := os.OpenFile("/home/nazar/nazzar/vocbl/vocblStorage/storage.json", os.O_RDWR, 0644)
 
 	oldStorageData, _ := io.ReadAll(storage)
 	var storageData []User
@@ -84,7 +84,6 @@ func (user User) SaveUsersData() {
 
 	var i = slices.IndexFunc(storageData, func(u User) bool {
 		return u.UserId == user.UserId
-
 	})
 
 	storageData[i] = user

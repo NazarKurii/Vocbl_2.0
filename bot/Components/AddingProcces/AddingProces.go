@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/NazarKurii/vocbl/Chat"
-	"github.com/NazarKurii/vocbl/Expretion"
-	"github.com/NazarKurii/vocbl/ExpretionData"
-	"github.com/NazarKurii/vocbl/User"
+	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
+	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
+	"github.com/NazarKurii/Vocbl_2.0.git/ExpretionData"
+	"github.com/NazarKurii/Vocbl_2.0.git/User"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -105,6 +105,7 @@ type Choise struct {
 }
 
 func chooseTranslations(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) []string {
+
 	var translationsCommands = make([]Chat.MessageComand, len(translationsWithExamples))
 	for i, translationWithExample := range translationsWithExamples {
 		translationsCommands[i].Command = translationWithExample.Translation
@@ -112,6 +113,7 @@ func chooseTranslations(user User.User, translationsWithExamples []ExpretionData
 	}
 
 	menues := Chat.NewMenues(translationsCommands, choise.customMessage)
+
 	messageId := user.Chat.SendMenue(menues[0], choise.choseMessage)
 
 	return getTransltions(user, menues, 0, messageId, false, false, []string{}, choise)

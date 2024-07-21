@@ -118,8 +118,14 @@ func GetEpretionData(expretion string, requestAttemts int) (ExpretionData, error
 			}
 		}
 	}
+	var max int
+	if len(examples) < 8 {
+		max = len(examples)
+	} else {
+		max = 8
+	}
 
-	examples = correctExamples(examples)
+	examples = correctExamples(examples[:max])
 
 	var translations []Translation
 
@@ -152,7 +158,7 @@ func getPronuciation(expretion string, data []Response) Pronunciation {
 		if pr.Sound.Audio != "" {
 			audioURL := fmt.Sprintf("https://media.merriam-webster.com/soundc11/%s/%s.wav", string(pr.Sound.Audio[0]), pr.Sound.Audio)
 			downloadFile(expretion, audioURL)
-			pronunciation.Path = fmt.Sprintf("../audio/%v", expretion)
+			pronunciation.Path = fmt.Sprintf("/home/nazar/nazzar/vocbl/audio/%v", expretion)
 		}
 	}
 
