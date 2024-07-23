@@ -55,7 +55,7 @@ type Card struct {
 	voiceMsg tgbotapi.VoiceConfig
 }
 
-func (e Expretion) SendCard(bot tgbotapi.BotAPI, chatId int64) {
+func (e Expretion) SendCard(bot *tgbotapi.BotAPI, chatId int64) {
 
 	card := fmt.Sprintf("• %v", strings.ToUpper(e.Data))
 	if e.Pronunciation != "" {
@@ -64,12 +64,12 @@ func (e Expretion) SendCard(bot tgbotapi.BotAPI, chatId int64) {
 
 	card += "\n\nTranslations: "
 
-	for _, translation := range e.TranslatedData {
+	for _, translation := range e.TranslatedData[:len(e.TranslatedData)-1] {
 
 		card += translation + ", "
 
 	}
-	card = card[:len(card)-1]
+	card = card[:len(card)-2]
 
 	if len(e.Examples) > 0 {
 		card += "\n\nExamples:"
@@ -92,7 +92,7 @@ func (e Expretion) SendCard(bot tgbotapi.BotAPI, chatId int64) {
 		defer voiceFile.Close()
 
 		voice := tgbotapi.NewVoiceUpload(chatId, tgbotapi.FileReader{
-			Name:   "voice.ogg", // Assuming the file is an ogg file. Change if needed.
+			Name:   "voice.ogg",
 			Reader: voiceFile,
 			Size:   -1,
 		})

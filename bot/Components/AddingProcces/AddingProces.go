@@ -3,6 +3,7 @@ package AddindProces
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
@@ -22,6 +23,7 @@ func CustomAddindProcces(user User.User, data ExpretionData.ExpretionData, newEx
 }
 
 func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpretion Expretion.Expretion) (Expretion.Expretion, error) {
+	newExpretion.Data = strings.ToLower(newExpretion.Data)
 
 	newExpretion.TranslatedData = chooseTranslations(user, data.Translations, Choise{"Choose translations:", "Custom translation:", "Translations", "Translation"})
 	newExpretion.Examples = chooseExamples(user, data.Translations, Choise{"Choose exmples:", "Custom example:", "Examples", "Example"})
@@ -33,6 +35,7 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 		}
 		switch update.CallbackQuery.Data {
 		case "yes":
+			go user.Chat.SendMessege("Wait, looking for data...")
 			return Yes
 		case "no":
 			return No
@@ -54,7 +57,7 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 	newExpretion.PronunciationPath = data.Pronunciation.Path
 	newExpretion.Pronunciation = data.Pronunciation.Phonetic
 
-	newExpretion.SendCard(*user.Chat.Bot, user.Chat.ChatId)
+	newExpretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
 	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"No", "no"}, Chat.MessageComand{"Fill again", "again"}}, "Add cart?", 2)
 	status = user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 		if update.Message != nil {

@@ -76,7 +76,7 @@ func (user User) showListOfExpretions(expretions []Expretion.Expretion) {
 }
 
 func (user User) SaveUsersData() {
-	storage, _ := os.OpenFile("/home/nazar/nazzar/vocbl/vocblStorage/storage.json", os.O_RDWR, 0644)
+	storage, _ := os.OpenFile("../vocblStorage/storage.json", os.O_RDWR, 0644)
 
 	oldStorageData, _ := io.ReadAll(storage)
 	var storageData []User

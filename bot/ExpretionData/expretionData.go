@@ -287,7 +287,7 @@ func getTransltion(expretion, context string, tries int) (string, error) {
 	var deepLResponse DeepLResponse
 	if err := json.Unmarshal(bodyBytes, &deepLResponse); err != nil {
 		fmt.Println("Error decoding the response:", err)
-		os.Exit(1)
+
 	}
 
 	if len(deepLResponse.Translations) > 0 {

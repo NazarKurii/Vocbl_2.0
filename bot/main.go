@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
 	AddindProces "github.com/NazarKurii/Vocbl_2.0.git/Components/AddingProcces"
@@ -26,10 +26,7 @@ func main() {
 	var u = tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	var updates, err2 = bot.GetUpdatesChan(u)
-	if err2 != nil {
-		//do
-	}
+	var updates, _ = bot.GetUpdatesChan(u)
 
 	for update := range updates {
 
@@ -52,7 +49,6 @@ func main() {
 		case "/card":
 			card(user)
 		case "/test":
-			test(user)
 
 		case "/study":
 			//study(Chat.Chat{bot, updates, update.Message.Chat.ID})
@@ -62,22 +58,6 @@ func main() {
 
 	}
 
-}
-
-func test(user User.User) {
-	voiceFile, err := os.Open("/home/nazar/nazzar/vocbl/audio/fuck")
-	if err == nil {
-		defer voiceFile.Close()
-
-		voice := tgbotapi.NewVoiceUpload(user.UserId, tgbotapi.FileReader{
-			Name:   "voice.ogg", // Assuming the file is an ogg file. Change if needed.
-			Reader: voiceFile,
-			Size:   -1,
-		})
-
-		voice.Caption = "jfnjrnrwwrjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj"
-		user.Chat.Bot.Send(voice)
-	}
 }
 
 const (
@@ -90,8 +70,8 @@ const (
 func card(user User.User) {
 	user.Chat.SendMessege("Provide expretion:")
 	userReprly := user.Chat.GetUpdate()
-	if exp, exists := user.FindExpretion(userReprly); exists {
-		exp.SendCard(*user.Chat.Bot, user.Chat.ChatId)
+	if exp, exists := user.FindExpretion(strings.ToLower(userReprly)); exists {
+		exp.SendCard(user.Chat.Bot, user.Chat.ChatId)
 	} else {
 		user.Chat.SendMessege(fmt.Sprintf("There is no \"%v\" in your vocbl😢", userReprly))
 	}
@@ -104,7 +84,7 @@ func addExpretion(user User.User) {
 
 	var newExpretion = Expretion.Expretion{Data: userReprly}
 	if oldExpretion, exists := user.FindExpretion(userReprly); exists {
-		oldExpretion.SendCard(*user.Chat.Bot, user.Chat.ChatId)
+		oldExpretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
 		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"Leave both", "no"}, Chat.MessageComand{"Leave(stop adding)", "leave"}}, "Expretion already exists in your vocbl. \n\nWant to replase it?", 1)
 		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 			if update.Message != nil {
@@ -135,7 +115,7 @@ func addExpretion(user User.User) {
 			return
 		}
 	}
-
+	go user.Chat.SendMessege("Wait, looking for data...")
 	var data, err = ExpretionData.GetEpretionData(userReprly, ExpretionData.RequestAttemts)
 	fmt.Println(data, ".....................................")
 	if err != nil {
