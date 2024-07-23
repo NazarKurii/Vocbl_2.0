@@ -18,11 +18,8 @@ var (
 	RefuseError = errors.New("User does not want to add card")
 )
 
-func CustomAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpretion Expretion.Expretion) (Expretion.Expretion, error) {
-	return Expretion.Expretion{}, nil
-}
-
 func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpretion Expretion.Expretion) (Expretion.Expretion, error) {
+
 	newExpretion.Data = strings.ToLower(newExpretion.Data)
 
 	newExpretion.TranslatedData = chooseTranslations(user, data.Translations, Choise{"Choose translations:", "Custom translation:", "Translations", "Translation"})
@@ -35,7 +32,7 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 		}
 		switch update.CallbackQuery.Data {
 		case "yes":
-			go user.Chat.SendMessege("Wait, looking for data...")
+
 			return Yes
 		case "no":
 			return No
@@ -96,17 +93,7 @@ func chooseExamples(user User.User, translationsWithExamples []ExpretionData.Tra
 		}
 	}
 
-	menues := Chat.NewMenues(translationsCommands, choise.customMessage)
-	messageId := user.Chat.SendMenue(menues[0], choise.choseMessage)
-
-	return getTransltions(user, menues, 0, messageId, false, false, []string{}, choise)
-}
-
-type Choise struct {
-	choseMessage  string
-	customMessage string
-	choises       string
-	added         string
+	return choseOptions(user, translationsCommands, choise)
 }
 
 func chooseTranslations(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) []string {
@@ -117,61 +104,84 @@ func chooseTranslations(user User.User, translationsWithExamples []ExpretionData
 		translationsCommands[i].Callback = translationWithExample.Translation
 	}
 
-	menues := Chat.NewMenues(translationsCommands, choise.customMessage)
-
-	messageId := user.Chat.SendMenue(menues[0], choise.choseMessage)
-
-	return getTransltions(user, menues, 0, messageId, false, false, []string{}, choise)
+	return choseOptions(user, translationsCommands, choise)
 
 }
 
-func getTransltions(user User.User, menues []tgbotapi.InlineKeyboardMarkup, menueIndex int, messageId int, edit, addMore bool, translations []string, choise Choise) []string {
+type Choise struct {
+	choseMessage  string
+	customMessage string
+	choises       string
+	added         string
+}
 
-	if edit {
-		user.Chat.Bot.Send(tgbotapi.NewEditMessageReplyMarkup(user.Chat.ChatId, messageId, menues[menueIndex]))
-	} else if addMore {
-		messageId = user.Chat.SendMenue(menues[menueIndex], choise.choseMessage)
+func choseOptions(user User.User, options []Chat.MessageComand, choise Choise) []string {
 
-	}
+	menues := Chat.NewMenues(options, choise.customMessage)
+	messageId := user.Chat.SendMenue(menues[0], choise.choseMessage)
+	var translations []string
 
-	switch translation, status := getTransltionsUpdates(user); status {
-	case Save:
-		return append(translations, translation)
-	case Back:
-		return getTransltions(user, menues, menueIndex-1, messageId, true, false, translations, choise)
-	case Forward:
-		return getTransltions(user, menues, menueIndex+1, messageId, true, false, translations, choise)
-	case Added:
-		return getTransltions(user, menues, menueIndex, messageId, false, false, append(translations, translation), choise)
-	default:
-		return getTransltions(user, menues, menueIndex, messageId, false, false, translations, choise)
-	case Custom:
-		user.Chat.SendMessege(choise.customMessage)
-		translation = user.Chat.GetUpdate()
-		translations = append(translations, translation)
-		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "save"}, Chat.MessageComand{choise.choises, "add"}}, fmt.Sprintf("%v \"%v\" added", choise.added, translation), 1)
-		status = user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
-			if update.Message != nil {
-				return Contine
-			}
-			switch update.CallbackQuery.Data {
-			case "save":
-				return Save
-			case "add":
-				return AddMore
-			default:
-				return Contine
-			}
-		})
-		switch status {
-		case AddMore:
-			return getTransltions(user, menues, menueIndex, messageId, false, true, translations, choise)
-		case Save:
-			return translations
+	var zeroTranslations bool
+	for i := 0; i >= 0; {
+		if zeroTranslations {
+			messageId = user.Chat.SendMenue(menues[i], choise.choseMessage)
+		} else {
+			user.Chat.Bot.Send(tgbotapi.NewEditMessageReplyMarkup(user.Chat.ChatId, messageId, menues[i]))
 		}
-	}
-	return []string{}
+		switch translation, status := getOptionsUpdate(user); status {
+		case Save:
+			if len(translations) == 0 {
+				user.Chat.SendMessege("Translation field cannot be empty...")
+				zeroTranslations = true
+				continue
+			}
+			i = -1
+		case Back:
+			i--
+			continue
+		case Forward:
+			i++
+			continue
+		case Added:
+			translations = append(translations, translation)
+		default:
 
+		case Custom:
+			translation, status := customAdding(user, choise)
+			translations = append(translations, translation)
+			switch status {
+			case AddMore:
+				continue
+			case Save:
+				i = -1
+			}
+		}
+
+	}
+
+	return translations
+
+}
+
+func customAdding(user User.User, choise Choise) (string, int) {
+	user.Chat.SendMessege(choise.customMessage)
+	translation := user.Chat.GetUpdate()
+
+	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "save"}, Chat.MessageComand{choise.choises, "add"}}, fmt.Sprintf("%v \"%v\" added", choise.added, translation), 1)
+	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+		if update.Message != nil {
+			return Contine
+		}
+		switch update.CallbackQuery.Data {
+		case "save":
+			return Save
+		case "add":
+			return AddMore
+		default:
+			return Contine
+		}
+	})
+	return translation, status
 }
 
 const (
@@ -187,7 +197,7 @@ const (
 	Again
 )
 
-func getTransltionsUpdates(user User.User) (string, int) {
+func getOptionsUpdate(user User.User) (string, int) {
 	var translation string
 	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 		if update.Message != nil {

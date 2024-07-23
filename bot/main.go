@@ -50,8 +50,12 @@ func main() {
 			card(user)
 		case "/test":
 
+		case "/quiz":
+			quizCommand(user)
 		case "/study":
 			//study(Chat.Chat{bot, updates, update.Message.Chat.ID})
+		case "/remove":
+
 		default:
 			//Chat.Chat{bot, updates, update.Message.Chat.ID}.SendMessege("Unknown comand:(")
 		}
@@ -115,61 +119,44 @@ func addExpretion(user User.User) {
 			return
 		}
 	}
+
 	go user.Chat.SendMessege("Wait, looking for data...")
-	var data, err = ExpretionData.GetEpretionData(userReprly, ExpretionData.RequestAttemts)
-	fmt.Println(data, ".....................................")
-	if err != nil {
+	var data, _ = ExpretionData.GetEpretionData(userReprly, ExpretionData.RequestAttemts)
 
-		if newExpretion, err = AddindProces.CustomAddindProcces(user, data, newExpretion); err != nil {
-			switch err {
-			case AddindProces.AgainError:
-				newExpretion, err = AddindProces.CustomAddindProcces(user, data, newExpretion)
-				if err != nil {
-					switch err {
-					case AddindProces.AgainError:
-						user.Chat.SendMessege("Let us start over. Send me \"/add\"")
-					case AddindProces.RefuseError:
-						user.Chat.SendMessege("Card wasn't added...")
-						user.Chat.SendMessege("What can I do for you😁?")
-					}
+	if newExpretion, err := AddindProces.AutoAddindProcces(user, data, newExpretion); err != nil {
+		switch err {
+		case AddindProces.AgainError:
+			newExpretion, err = AddindProces.AutoAddindProcces(user, data, newExpretion)
+			if err != nil {
+				switch err {
+				case AddindProces.AgainError:
+					user.Chat.SendMessege("Let us start over. Send me \"/add\"")
+				case AddindProces.RefuseError:
+					user.Chat.SendMessege("Card wasn't added...")
+					user.Chat.SendMessege("What can I do for you😁?")
 				}
-			case AddindProces.RefuseError:
-				user.Chat.SendMessege("Card wasn't added...")
+			} else {
+				user.AddToUserStorage(newExpretion)
+				user.Chat.SendMessege("Translation added")
 				user.Chat.SendMessege("What can I do for you😁?")
-			}
 
+			}
+		case AddindProces.RefuseError:
+			user.Chat.SendMessege("Card wasn't added...")
+			user.Chat.SendMessege("What can I do for you😁?")
 		}
+
 	} else {
 
-		if newExpretion, err = AddindProces.AutoAddindProcces(user, data, newExpretion); err != nil {
-			switch err {
-			case AddindProces.AgainError:
-				newExpretion, err = AddindProces.AutoAddindProcces(user, data, newExpretion)
-				if err != nil {
-					switch err {
-					case AddindProces.AgainError:
-						user.Chat.SendMessege("Let us start over. Send me \"/add\"")
-					case AddindProces.RefuseError:
-						user.Chat.SendMessege("Card wasn't added...")
-						user.Chat.SendMessege("What can I do for you😁?")
-					}
-				} else {
-					user.AddToUserStorage(newExpretion)
-					user.Chat.SendMessege("Translation added")
-					user.Chat.SendMessege("What can I do for you😁?")
+		user.AddToUserStorage(newExpretion)
+		user.Chat.SendMessege("Translation added")
+		user.Chat.SendMessege("What can I do for you😁?")
 
-				}
-			case AddindProces.RefuseError:
-				user.Chat.SendMessege("Card wasn't added...")
-				user.Chat.SendMessege("What can I do for you😁?")
-			}
-
-		} else {
-
-			user.AddToUserStorage(newExpretion)
-			user.Chat.SendMessege("Translation added")
-			user.Chat.SendMessege("What can I do for you😁?")
-
-		}
 	}
+
+}
+
+func quizCommand(user User.User) {
+	user.Chat.SendMessege("Welcome to quize!\nHow many expretions do you want to quiz today?")
+
 }
