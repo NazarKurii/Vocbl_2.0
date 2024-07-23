@@ -51,8 +51,10 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 	todaysDate := time.Now().Format("2006s.01.02")
 	newExpretion.CreationDate = todaysDate
 	newExpretion.ReapeatDate = todaysDate
+	newExpretion.PronunciationPath = data.Pronunciation.Path
+	newExpretion.Pronunciation = data.Pronunciation.Phonetic
 
-	newExpretion.Card(user.Chat.ChatId).Send(*user.Chat.Bot)
+	newExpretion.SendCard(*user.Chat.Bot, user.Chat.ChatId)
 	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"No", "no"}, Chat.MessageComand{"Fill again", "again"}}, "Add cart?", 2)
 	status = user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 		if update.Message != nil {

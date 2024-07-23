@@ -9,5 +9,6 @@ require (
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 
 )

@@ -55,29 +55,21 @@ type Card struct {
 	voiceMsg tgbotapi.VoiceConfig
 }
 
-func (c Card) Send(bot tgbotapi.BotAPI) {
-	if c.voice {
-		bot.Send(c.voiceMsg)
-	} else {
-		bot.Send(c.msg)
+func (e Expretion) SendCard(bot tgbotapi.BotAPI, chatId int64) {
+
+	card := fmt.Sprintf("• %v", strings.ToUpper(e.Data))
+	if e.Pronunciation != "" {
+		card += "\n: " + e.Pronunciation
 	}
-}
-
-func (e Expretion) Card(chatId int64) Card {
-
-	card := fmt.Sprintf("• %v ", strings.ToUpper(e.Data))
 
 	card += "\n\nTranslations: "
 
-	last := len(e.TranslatedData) - 1
-	for i, translation := range e.TranslatedData {
-		if i != last {
+	for _, translation := range e.TranslatedData {
 
-			card += translation + ", "
-		} else {
-			card += translation
-		}
+		card += translation + ", "
+
 	}
+	card = card[:len(card)-1]
 
 	if len(e.Examples) > 0 {
 		card += "\n\nExamples:"
@@ -91,13 +83,12 @@ func (e Expretion) Card(chatId int64) Card {
 		card += fmt.Sprintf("\n\nNotes: %v", e.Notes)
 	}
 
-	card += fmt.Sprintf("\n\nCreation date: %v\n\nTest date: %v", e.CreationDate, e.ReapeatDate)
-	if e.Pronunciation != "" {
-		card += "\n\nPronunciation: " + e.Pronunciation
-	}
+	card += fmt.Sprintf("\n\nTest date: %v", e.ReapeatDate)
 
 	voiceFile, err := os.Open(e.PronunciationPath)
+	fmt.Println(err, "<<<<,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
 	if err == nil {
+
 		defer voiceFile.Close()
 
 		voice := tgbotapi.NewVoiceUpload(chatId, tgbotapi.FileReader{
@@ -108,16 +99,11 @@ func (e Expretion) Card(chatId int64) Card {
 
 		voice.Caption = card
 
-		return Card{
-			voiceMsg: voice,
-			voice:    true,
-		}
+		bot.Send(voice)
 	} else {
-		fmt.Println("Error opening voice file:", err)
-		return Card{
-			msg:   tgbotapi.NewMessage(chatId, card),
-			voice: false,
-		}
-	}
 
+		bot.Send(tgbotapi.NewMessage(chatId, card))
+		fmt.Println("Error opening voice file:", err)
+
+	}
 }

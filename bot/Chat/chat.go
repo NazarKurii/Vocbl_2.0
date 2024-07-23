@@ -3,6 +3,7 @@ package Chat
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -86,7 +87,16 @@ func (chat Chat) GetUpdateFunc(f func(update tgbotapi.Update) int) int {
 var bot, _ = tgbotapi.NewBotAPI("7421574054:AAH1pp0hDxoNQPPxFF1x5x6viuC6PX7UlJ4")
 
 func NewMenues(options []MessageComand, customInfo string) []tgbotapi.InlineKeyboardMarkup {
-	var optionBunches = make([][][]tgbotapi.InlineKeyboardButton, int(math.Ceil(float64(len(options))/5)))
+
+	options = slices.DeleteFunc(options, func(option MessageComand) bool {
+		return len(option.Callback) > 64
+	})
+
+	length := int(math.Ceil(float64(len(options)) / 5))
+	if length == 0 {
+		length++
+	}
+	var optionBunches = make([][][]tgbotapi.InlineKeyboardButton, length)
 
 	for i, option := range options {
 		optionBunches[i/5] = append(optionBunches[i/5], tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(option.Command, option.Callback)))
@@ -115,7 +125,11 @@ func NewMenues(options []MessageComand, customInfo string) []tgbotapi.InlineKeyb
 		}
 
 		commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData(customInfo, "custom"))
-		menues = append(menues, tgbotapi.NewInlineKeyboardMarkup(append(options, commandRaws...)...))
+		var menu [][]tgbotapi.InlineKeyboardButton = commandRaws
+		if len(options) != 0 {
+			menu = append(options, menu...)
+		}
+		menues = append(menues, tgbotapi.NewInlineKeyboardMarkup(menu...))
 	}
 
 	return menues

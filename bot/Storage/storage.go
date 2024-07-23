@@ -37,7 +37,7 @@ func VerifyStorage() {
 }
 
 func OpenStorage() ([]User.User, *os.File) {
-	storage, _ := os.OpenFile("/home/nazar/nazzar/vocbl/vocblStorage/storage.json", os.O_RDWR, 0644)
+	storage, _ := os.OpenFile("../vocblStorage/storage.json", os.O_RDWR, 0644)
 
 	oldStorageData, _ := io.ReadAll(storage)
 	var storageData []User.User

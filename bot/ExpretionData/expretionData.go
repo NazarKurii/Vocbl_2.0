@@ -10,6 +10,8 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"strings"
+	"unicode"
 )
 
 var (
@@ -48,6 +50,7 @@ type Response struct {
 			} `json:"sound"`
 		} `json:"prs"`
 	} `json:"hwi"`
+	Fl  string `json":"fl"`
 	Def []struct {
 		Sseq [][][]interface{} `json:"sseq"`
 	} `json:"def"`
@@ -145,8 +148,61 @@ func GetEpretionData(expretion string, requestAttemts int) (ExpretionData, error
 			translations[existingContextTranslationIndex].Examples = append(translations[existingContextTranslationIndex].Examples, context)
 		}
 	}
+	translations = sortTranslations(translations)
+
+	if data[0].Fl == "verb" {
+
+		translations = filterVerbs(translations)
+	}
 
 	return ExpretionData{translations, getPronuciation(expretion, data)}, nil
+}
+
+func sortTranslations(translations []Translation) []Translation {
+
+	var sortTranslations = make([]Translation, len(translations))
+
+	for i, translation := range translations {
+		var newTranslation = Translation{Examples: translation.Examples}
+		var newName []rune
+
+		for _, character := range translation.Translation {
+
+			if unicode.IsLetter(character) {
+
+				newName = append(newName, character)
+			}
+		}
+		newName[0] = unicode.ToUpper(newName[0])
+		newTranslation.Translation = string(newName)
+		sortTranslations[i] = newTranslation
+	}
+	return sortTranslations
+}
+func filterVerbs(translations []Translation) []Translation {
+	var infinitives []Translation
+	for _, translation := range translations {
+
+		if strings.ToLower(translation.Translation)[len(translation.Translation)-1] == 184 {
+
+			infinitives = append(infinitives, translation)
+		} else {
+			var new = true
+			translationToCompare := translation.Translation[:2]
+			for i, infinitive := range infinitives {
+
+				if strings.Compare(infinitive.Translation[:2], translationToCompare) == 0 {
+					infinitives[i].Examples = append(infinitive.Examples, translation.Examples...)
+					new = false
+					break
+				}
+			}
+			if new {
+				infinitives = append(infinitives, translation)
+			}
+		}
+	}
+	return infinitives
 }
 
 func getPronuciation(expretion string, data []Response) Pronunciation {
@@ -158,17 +214,17 @@ func getPronuciation(expretion string, data []Response) Pronunciation {
 		if pr.Sound.Audio != "" {
 			audioURL := fmt.Sprintf("https://media.merriam-webster.com/soundc11/%s/%s.wav", string(pr.Sound.Audio[0]), pr.Sound.Audio)
 			downloadFile(expretion, audioURL)
-			pronunciation.Path = fmt.Sprintf("/home/nazar/nazzar/vocbl/audio/%v", expretion)
+			pronunciation.Path = fmt.Sprintf("../audio/%v", strings.ToLower(expretion))
+
 		}
 	}
 
 	return pronunciation
-
 }
 
 func downloadFile(expretion string, url string) error {
 	// Create the file
-	out, err := os.Create(fmt.Sprintf("/home/nazar/nazzar/vocbl/audio/%v", expretion))
+	out, err := os.Create(fmt.Sprintf("../audio/%v", strings.ToLower(expretion)))
 	if err != nil {
 		return err
 	}
