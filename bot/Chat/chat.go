@@ -75,6 +75,9 @@ func (chat Chat) GetUpdate() string {
 func (chat Chat) GetUpdateFunc(f func(update tgbotapi.Update) int) int {
 	var result int
 	for update := range chat.Updates {
+		if update.Message != nil {
+			continue
+		}
 		if result = f(update); result != -1 {
 
 			break

@@ -107,3 +107,14 @@ func (e Expretion) SendCard(bot *tgbotapi.BotAPI, chatId int64) {
 
 	}
 }
+
+func (e Expretion) Translations() string {
+	var translations string
+
+	for _, translation := range e.TranslatedData {
+
+		translations += translation + ", "
+	}
+
+	return translations
+}

@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
@@ -157,6 +160,79 @@ func addExpretion(user User.User) {
 }
 
 func quizCommand(user User.User) {
-	user.Chat.SendMessege("Welcome to quize!\nHow many expretions do you want to quiz today?")
+	user.Chat.SendMessege("Welcome to quize!")
+	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"10", "10"}, Chat.MessageComand{"20", "20"}, Chat.MessageComand{"50", "50"}, Chat.MessageComand{"Custom", "custom"}}, "Choose amount of expretions:", 2)
+	amountOfExpretions := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+		switch update.CallbackQuery.Data {
+		case "10":
+			return 10
+		case "20":
+			return 10
+		case "50":
+			return 10
+		case "Custom":
+			return 0
+		default:
+			return -1
+		}
+	})
 
+	if amountOfExpretions == 0 {
+		amountOfExpretions = getExpretionAmount(user)
+
+	}
+	var totalStorageAmount = len(user.Storage)
+
+	if totalStorageAmount < amountOfExpretions {
+		amountOfExpretions = totalStorageAmount
+	}
+	var expretionsToQuize = make([]Expretion.Expretion, amountOfExpretions)
+
+	for i := 0; i < amountOfExpretions; i++ {
+		var exist bool
+		for exist {
+			newExpretion := user.Storage[rand.Intn(totalStorageAmount)]
+			exist = slices.ContainsFunc(expretionsToQuize, func(e Expretion.Expretion) bool {
+				return e.Data == newExpretion.Data
+			})
+			if !exist {
+				expretionsToQuize[i] = newExpretion
+				break
+			}
+		}
+
+	}
+
+	user.Quiz(expretionsToQuize, false)
+
+}
+
+func getExpretionAmount(user User.User) int {
+	var amountOfExpretions int
+	var isntNumber = true
+
+	for isntNumber {
+		isntNumber = false
+		user.Chat.SendMessege("Provide expretions amount:")
+		usersReply := user.Chat.GetUpdate()
+		amountOfExpretions, err := strconv.Atoi(usersReply)
+		if err != nil {
+			user.Chat.SendMessege("Must be a number😁")
+			isntNumber = true
+		}
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Keep", "true"}, Chat.MessageComand{"Change", "false"}}, fmt.Sprintf("Amount set to %v", amountOfExpretions), 2)
+		user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+			switch update.CallbackQuery.Data {
+			case "true":
+				return 1
+			case "false":
+				isntNumber = true
+				return No
+			default:
+				return -1
+			}
+		})
+	}
+
+	return amountOfExpretions
 }

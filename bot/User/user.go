@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"slices"
 
 	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
 	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 type User struct {
@@ -106,4 +108,93 @@ func (user User) FindExpretion(data string) (Expretion.Expretion, bool) {
 	} else {
 		return user.Storage[i], true
 	}
+}
+
+const (
+	showAnswers = iota
+	notSure
+	correct
+)
+
+func (user User) Quiz(expretions []Expretion.Expretion, test bool) float64 {
+	var totalAnswers = len(expretions)
+	var fakeAnswers = user.getWrongAnswers(totalAnswers)
+	var wrongAnswers float64
+	fmt.Println(totalAnswers, fakeAnswers, wrongAnswers, "..........")
+
+	for _, experetion := range expretions {
+
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Answer", "true"}, Chat.MessageComand{"Not sure", "false"}}, experetion.Translations(), 1)
+		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+			switch update.CallbackQuery.Data {
+			case "true":
+				return showAnswers
+			case "false":
+				wrongAnswers++
+				return notSure
+			default:
+				return -1
+			}
+		})
+
+		if status == showAnswers {
+			answers := []Chat.MessageComand{Chat.MessageComand{experetion.Data, "true"}, Chat.MessageComand{fakeAnswers[rand.Intn(totalAnswers)], "false"}, Chat.MessageComand{fakeAnswers[rand.Intn(totalAnswers)], "false"}}
+			rand.Shuffle(3, func(i, j int) {
+				answers[i], answers[j] = answers[j], answers[i]
+			})
+			user.Chat.SendMessegeComand(answers, "", 3)
+			status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+				switch update.CallbackQuery.Data {
+				case "true":
+					return correct
+				case "false":
+					wrongAnswers++
+					return notSure
+				default:
+					return -1
+				}
+			})
+			if status == correct {
+				user.Chat.SendMessege("Correct✅")
+			} else {
+				wrongAnswers++
+
+				user.Chat.SendMessege("Wrong❌")
+
+				if !test {
+					experetion.SendCard(user.Chat.Bot, user.Chat.ChatId)
+					user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Continue", "true"}}, "", 1)
+					user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+						switch update.CallbackQuery.Data {
+						case "true":
+							return correct
+
+						default:
+							return -1
+						}
+					})
+
+				}
+			}
+		}
+
+	}
+	return 100.0 - (float64(totalAnswers) / 100.0 * wrongAnswers)
+
+}
+
+func (user User) getWrongAnswers(amount int) []string {
+	var wrongAnswers = make([]string, amount)
+	var totalExpretionAmount = len(user.Storage)
+
+	amount *= 2
+
+	if amount > totalExpretionAmount {
+		amount = totalExpretionAmount
+	}
+	for i := 0; i < amount; i++ {
+		wrongAnswers[i] = user.Storage[rand.Int63n(int64(amount))].Data
+
+	}
+	return wrongAnswers
 }
