@@ -116,13 +116,15 @@ const (
 	correct
 )
 
-func (user User) Quiz(expretions []Expretion.Expretion, test bool) float64 {
-	var totalAnswers = len(expretions)
-	var fakeAnswers = user.getWrongAnswers(totalAnswers)
-	var wrongAnswers float64
-	fmt.Println(totalAnswers, fakeAnswers, wrongAnswers, "..........")
+func (user User) Quiz(expretions []Expretion.Expretion, test bool) int {
 
-	for _, experetion := range expretions {
+	var totalAnswers = len(expretions)
+
+	var fakeAnswers = user.getWrongAnswers(totalAnswers)
+
+	var wrongAnswers float64
+
+	for i, experetion := range expretions {
 
 		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Answer", "true"}, Chat.MessageComand{"Not sure", "false"}}, experetion.Translations(), 1)
 		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
@@ -138,12 +140,30 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) float64 {
 		})
 
 		if status == showAnswers {
-			answers := []Chat.MessageComand{Chat.MessageComand{experetion.Data, "true"}, Chat.MessageComand{fakeAnswers[rand.Intn(totalAnswers)], "false"}, Chat.MessageComand{fakeAnswers[rand.Intn(totalAnswers)], "false"}}
+			var fakeAnswer2, fakeUnswer1 string
+
+			for true {
+				var n1, n2 = rand.Intn(totalAnswers), rand.Intn(totalAnswers)
+				if n1 == n2 {
+					if n1 == 0 {
+						n1++
+					} else {
+						n1--
+					}
+				}
+				fakeUnswer1, fakeAnswer2 = fakeAnswers[n1], fakeAnswers[n2]
+				if fakeAnswer2 != experetion.Data && fakeUnswer1 != experetion.Data {
+					break
+				}
+			}
+
+			answers := []Chat.MessageComand{Chat.MessageComand{experetion.Data, "true"}, Chat.MessageComand{fakeAnswer2, "false"}, Chat.MessageComand{fakeUnswer1, "false"}}
+
 			rand.Shuffle(3, func(i, j int) {
 				answers[i], answers[j] = answers[j], answers[i]
 			})
-			user.Chat.SendMessegeComand(answers, "", 3)
-			status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+			user.Chat.SendMessegeComand(answers, "Choose correct answer:", 3)
+			status = user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 				switch update.CallbackQuery.Data {
 				case "true":
 					return correct
@@ -154,37 +174,42 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) float64 {
 					return -1
 				}
 			})
-			if status == correct {
-				user.Chat.SendMessege("Correct✅")
+		}
+
+		if status == correct {
+			user.Chat.SendMessege("Correct✅")
+			continue
+		} else {
+			wrongAnswers++
+			if !test {
+
+				experetion.SendCard(user.Chat.Bot, user.Chat.ChatId)
+
 			} else {
-				wrongAnswers++
-
 				user.Chat.SendMessege("Wrong❌")
-
-				if !test {
-					experetion.SendCard(user.Chat.Bot, user.Chat.ChatId)
-					user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Continue", "true"}}, "", 1)
-					user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
-						switch update.CallbackQuery.Data {
-						case "true":
-							return correct
-
-						default:
-							return -1
-						}
-					})
-
-				}
 			}
 		}
 
+		if i != totalAnswers-1 {
+			user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Continue", "continue"}}, "Ready to move on?", 1)
+			user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+				switch update.CallbackQuery.Data {
+				case "continue":
+					return correct
+				default:
+					return -1
+				}
+			})
+		}
+
 	}
-	return 100.0 - (float64(totalAnswers) / 100.0 * wrongAnswers)
+
+	return 100 - int(wrongAnswers/float64(totalAnswers)*100.0)
 
 }
 
 func (user User) getWrongAnswers(amount int) []string {
-	var wrongAnswers = make([]string, amount)
+
 	var totalExpretionAmount = len(user.Storage)
 
 	amount *= 2
@@ -192,6 +217,8 @@ func (user User) getWrongAnswers(amount int) []string {
 	if amount > totalExpretionAmount {
 		amount = totalExpretionAmount
 	}
+	var wrongAnswers = make([]string, amount)
+
 	for i := 0; i < amount; i++ {
 		wrongAnswers[i] = user.Storage[rand.Int63n(int64(amount))].Data
 

@@ -64,20 +64,18 @@ func (e Expretion) SendCard(bot *tgbotapi.BotAPI, chatId int64) {
 
 	card += "\n\nTranslations: "
 
-	for _, translation := range e.TranslatedData[:len(e.TranslatedData)-1] {
+	for _, translation := range e.TranslatedData {
 
-		card += translation + ", "
+		card += strings.ToLower(translation) + ", "
 
 	}
 	card = card[:len(card)-2]
 
-	if len(e.Examples) > 0 {
-		card += "\n\nExamples:"
-		for _, exapmle := range e.Examples {
-			card += fmt.Sprintf("\n-%v", exapmle)
-		}
-		card = card[:len(card)-1]
+	card += "\n\nExamples:"
+	for _, exapmle := range e.Examples {
+		card += fmt.Sprintf("\n-%v", exapmle)
 	}
+	card = card[:len(card)-1]
 
 	if e.Notes != "" {
 		card += fmt.Sprintf("\n\nNotes: %v", e.Notes)
@@ -116,5 +114,5 @@ func (e Expretion) Translations() string {
 		translations += translation + ", "
 	}
 
-	return translations
+	return translations[:len(translations)-2]
 }

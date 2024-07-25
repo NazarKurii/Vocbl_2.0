@@ -121,14 +121,8 @@ func GetEpretionData(expretion string, requestAttemts int) (ExpretionData, error
 			}
 		}
 	}
-	var max int
-	if len(examples) < 8 {
-		max = len(examples)
-	} else {
-		max = 8
-	}
 
-	examples = correctExamples(examples[:max])
+	examples = correctExamples(examples)
 
 	var translations []Translation
 
@@ -183,7 +177,21 @@ func filterVerbs(translations []Translation) []Translation {
 	var infinitives []Translation
 	for _, translation := range translations {
 
-		if strings.ToLower(translation.Translation)[len(translation.Translation)-1] == 184 {
+		if strings.ToLower(translation.Translation)[len(translation.Translation)-1] == 184 && func() bool {
+			for i, infinitive := range infinitives {
+
+				if strings.Compare(infinitive.Translation[:2], translation.Translation) == 0 {
+					if translation.Translation[0] >= 65 && translation.Translation[0] <= 122 {
+						return true
+					}
+					infinitives[i].Examples = append(infinitive.Examples, translation.Examples...)
+					return true
+
+				}
+
+			}
+			return false
+		}() {
 
 			infinitives = append(infinitives, translation)
 		} else {
@@ -198,7 +206,12 @@ func filterVerbs(translations []Translation) []Translation {
 				}
 			}
 			if new {
-				infinitives = append(infinitives, translation)
+				if translation.Translation[0] >= 65 && translation.Translation[0] <= 122 {
+
+				} else {
+					infinitives = append(infinitives, translation)
+
+				}
 			}
 		}
 	}

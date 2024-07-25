@@ -167,10 +167,10 @@ func quizCommand(user User.User) {
 		case "10":
 			return 10
 		case "20":
-			return 10
+			return 20
 		case "50":
-			return 10
-		case "Custom":
+			return 50
+		case "custom":
 			return 0
 		default:
 			return -1
@@ -181,17 +181,22 @@ func quizCommand(user User.User) {
 		amountOfExpretions = getExpretionAmount(user)
 
 	}
+
 	var totalStorageAmount = len(user.Storage)
 
 	if totalStorageAmount < amountOfExpretions {
+		user.Chat.SendMessege(fmt.Sprintf("Your vocbl consists less that \"%v\" expretions. The amount is set to \"%v\"", amountOfExpretions, totalStorageAmount))
 		amountOfExpretions = totalStorageAmount
 	}
+
 	var expretionsToQuize = make([]Expretion.Expretion, amountOfExpretions)
 
 	for i := 0; i < amountOfExpretions; i++ {
-		var exist bool
+		var exist = true
 		for exist {
+
 			newExpretion := user.Storage[rand.Intn(totalStorageAmount)]
+
 			exist = slices.ContainsFunc(expretionsToQuize, func(e Expretion.Expretion) bool {
 				return e.Data == newExpretion.Data
 			})
@@ -203,27 +208,67 @@ func quizCommand(user User.User) {
 
 	}
 
-	user.Quiz(expretionsToQuize, false)
+	var passTest = true
+
+	for passTest {
+		user.Chat.SendMessege("Good luck!")
+		var successRate = int(user.Quiz(expretionsToQuize, false))
+
+		var rateMessage string
+
+		switch {
+		case successRate == 100:
+			rateMessage = "Your success rate is 💯%"
+		case successRate < 100 && successRate > 70:
+			rateMessage = fmt.Sprintf("Your success rate is \"%v%\"", successRate)
+		case successRate < 70:
+			rateMessage = fmt.Sprintf("Your success rate is \"%v%\" \nYou need to work harder...", successRate)
+		}
+		if successRate != 100 {
+			user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Try again", "true"}, Chat.MessageComand{"Leave", "false"}}, rateMessage, 2)
+			user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+				switch update.CallbackQuery.Data {
+				case "true":
+
+					return 1
+
+				case "false":
+					passTest = false
+					return 1
+				default:
+					return -1
+				}
+			})
+		} else {
+			user.Chat.SendMessege(rateMessage)
+			user.Chat.SendMessege("🎉That was cool!!!🎉")
+			passTest = false
+		}
+	}
+	user.Chat.SendMessege("I was happy to give a hand😁")
 
 }
 
 func getExpretionAmount(user User.User) int {
-	var amountOfExpretions int
+	var result int
 	var isntNumber = true
 
 	for isntNumber {
 		isntNumber = false
+
 		user.Chat.SendMessege("Provide expretions amount:")
 		usersReply := user.Chat.GetUpdate()
 		amountOfExpretions, err := strconv.Atoi(usersReply)
 		if err != nil {
 			user.Chat.SendMessege("Must be a number😁")
 			isntNumber = true
+			continue
 		}
-		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Keep", "true"}, Chat.MessageComand{"Change", "false"}}, fmt.Sprintf("Amount set to %v", amountOfExpretions), 2)
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Keep", "true"}, Chat.MessageComand{"Change", "false"}}, fmt.Sprintf("Amount set to \"%v\"", amountOfExpretions), 2)
 		user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 			switch update.CallbackQuery.Data {
 			case "true":
+				result = amountOfExpretions
 				return 1
 			case "false":
 				isntNumber = true
@@ -234,5 +279,5 @@ func getExpretionAmount(user User.User) int {
 		})
 	}
 
-	return amountOfExpretions
+	return result
 }
