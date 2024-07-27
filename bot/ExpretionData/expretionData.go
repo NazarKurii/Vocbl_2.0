@@ -126,6 +126,10 @@ func GetEpretionData(expretion string, requestAttemts int) (ExpretionData, error
 
 	var translations []Translation
 
+	if translation, err := getTransltion(expretion, "", requestAttemts); err == nil {
+		translations = append(translations, Translation{Translation: translation})
+	}
+
 	for _, context := range examples {
 		contextTranslation, err := getTransltion(expretion, context, requestAttemts)
 
@@ -144,10 +148,7 @@ func GetEpretionData(expretion string, requestAttemts int) (ExpretionData, error
 	}
 	translations = sortTranslations(translations)
 
-	if data[0].Fl == "verb" {
-
-		translations = filterVerbs(translations)
-	}
+	translations = filterVerbs(translations)
 
 	return ExpretionData{translations, getPronuciation(expretion, data)}, nil
 }
@@ -162,7 +163,7 @@ func sortTranslations(translations []Translation) []Translation {
 
 		for _, character := range translation.Translation {
 
-			if unicode.IsLetter(character) {
+			if unicode.IsLetter(character) || unicode.IsSpace(character) {
 
 				newName = append(newName, character)
 			}

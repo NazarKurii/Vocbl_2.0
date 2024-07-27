@@ -67,7 +67,7 @@ func DefineUser(userId int64) (User.User, error) {
 }
 
 func CreateUser(bot *tgbotapi.BotAPI, userId int64, updates tgbotapi.UpdatesChannel) User.User {
-	var _, storage = OpenStorage()
+	var users, storage = OpenStorage()
 	var newUser = User.User{
 		UserId: userId,
 		Chat: Chat.Chat{
@@ -78,7 +78,7 @@ func CreateUser(bot *tgbotapi.BotAPI, userId int64, updates tgbotapi.UpdatesChan
 		DaylyTestTries: 2,
 	}
 
-	WriteToStorage([]User.User{newUser}, storage)
+	WriteToStorage(append(users, newUser), storage)
 
 	return newUser
 }

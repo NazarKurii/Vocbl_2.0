@@ -3,6 +3,7 @@ package AddindProces
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -22,14 +23,21 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 
 	newExpretion.Data = strings.ToLower(newExpretion.Data)
 
-	newExpretion.TranslatedData = chooseTranslations(user, data.Translations, Choise{"Choose translations:", "Custom translation:", "Translations", "Translation"})
-	newExpretion.Examples = chooseExamples(user, data.Translations, Choise{"Choose exmples:", "Custom example:", "Examples", "Example"})
+	translatedData, err := chooseTranslations(user, data.Translations, Choise{"Choose translations:", "Custom translation:", "Translations", "Translation"})
+	if err != nil {
+		return Expretion.Expretion{}, err
+	}
+	newExpretion.TranslatedData = translatedData
+
+	examples, err := chooseExamples(user, data.Translations, Choise{"Choose exmples:", "Custom example:", "Examples", "Example"})
+	if err != nil {
+		return Expretion.Expretion{}, err
+	}
+	newExpretion.Examples = examples
 
 	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"No", "no"}}, "Any notes", 1)
 	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
-		if update.Message != nil {
-			return Contine
-		}
+
 		switch update.CallbackQuery.Data {
 		case "yes":
 
@@ -42,6 +50,8 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 	})
 
 	switch status {
+	case Chat.Start:
+		return Expretion.Expretion{}, User.StartEroor
 	case Yes:
 		user.Chat.SendMessege("Write me your notes:")
 		newExpretion.Notes = user.Chat.GetUpdate()
@@ -57,9 +67,7 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 	newExpretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
 	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"No", "no"}, Chat.MessageComand{"Fill again", "again"}}, "Add cart?", 2)
 	status = user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
-		if update.Message != nil {
-			return Contine
-		}
+
 		switch update.CallbackQuery.Data {
 		case "yes":
 			return Yes
@@ -72,6 +80,8 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 		}
 	})
 	switch status {
+	case Chat.Start:
+		return Expretion.Expretion{}, User.StartEroor
 	case Yes:
 		return newExpretion, nil
 	case No:
@@ -84,7 +94,7 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 
 }
 
-func chooseExamples(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) []string {
+func chooseExamples(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) ([]string, error) {
 	var translationsCommands = make([]Chat.MessageComand, len(translationsWithExamples))
 	for i, translationWithExamples := range translationsWithExamples {
 		for _, example := range translationWithExamples.Examples {
@@ -93,10 +103,14 @@ func chooseExamples(user User.User, translationsWithExamples []ExpretionData.Tra
 		}
 	}
 
-	return choseOptions(user, translationsCommands, choise)
+	var result, err = choseOptions(user, translationsCommands, choise, true)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func chooseTranslations(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) []string {
+func chooseTranslations(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) ([]string, error) {
 
 	var translationsCommands = make([]Chat.MessageComand, len(translationsWithExamples))
 	for i, translationWithExample := range translationsWithExamples {
@@ -104,8 +118,11 @@ func chooseTranslations(user User.User, translationsWithExamples []ExpretionData
 		translationsCommands[i].Callback = translationWithExample.Translation
 	}
 
-	return choseOptions(user, translationsCommands, choise)
-
+	var result, err = choseOptions(user, translationsCommands, choise, false)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 type Choise struct {
@@ -115,7 +132,7 @@ type Choise struct {
 	added         string
 }
 
-func choseOptions(user User.User, options []Chat.MessageComand, choise Choise) []string {
+func choseOptions(user User.User, options []Chat.MessageComand, choise Choise, canBeEmpty bool) ([]string, error) {
 
 	menues := Chat.NewMenues(options, choise.customMessage)
 	messageId := user.Chat.SendMenue(menues[0], choise.choseMessage)
@@ -130,8 +147,8 @@ func choseOptions(user User.User, options []Chat.MessageComand, choise Choise) [
 		}
 		switch translation, status := getOptionsUpdate(user); status {
 		case Save:
-			if len(translations) == 0 {
-				user.Chat.SendMessege("Translation field cannot be empty...")
+			if len(translations) == 0 && !canBeEmpty {
+				user.Chat.SendMessege(fmt.Sprintf("%v field cannot be empty...", choise.added))
 				zeroTranslations = true
 				continue
 			}
@@ -143,8 +160,10 @@ func choseOptions(user User.User, options []Chat.MessageComand, choise Choise) [
 			i++
 			continue
 		case Added:
+			menues[i].InlineKeyboard = slices.DeleteFunc(menues[i].InlineKeyboard, func(t []tgbotapi.InlineKeyboardButton) bool {
+				return t[0].Text == translation
+			})
 			translations = append(translations, translation)
-		default:
 
 		case Custom:
 			translation, status := customAdding(user, choise)
@@ -155,11 +174,15 @@ func choseOptions(user User.User, options []Chat.MessageComand, choise Choise) [
 			case Save:
 				i = -1
 			}
+		case Chat.Start:
+			return nil, User.StartEroor
+		default:
+
 		}
 
 	}
 
-	return translations
+	return translations, nil
 
 }
 
@@ -169,9 +192,7 @@ func customAdding(user User.User, choise Choise) (string, int) {
 
 	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "save"}, Chat.MessageComand{choise.choises, "add"}}, fmt.Sprintf("%v \"%v\" added", choise.added, translation), 1)
 	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
-		if update.Message != nil {
-			return Contine
-		}
+
 		switch update.CallbackQuery.Data {
 		case "save":
 			return Save
@@ -200,9 +221,7 @@ const (
 func getOptionsUpdate(user User.User) (string, int) {
 	var translation string
 	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
-		if update.Message != nil {
-			return Contine
-		}
+
 		switch data := update.CallbackQuery.Data; data {
 		case "save":
 			return Save

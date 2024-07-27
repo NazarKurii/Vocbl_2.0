@@ -20,13 +20,16 @@ type MessageComand struct {
 	Callback string `json:"call_back"`
 }
 
-func (chat Chat) SendCommands(commandMessages []string, message string, rowAmount int) {
+func (chat Chat) SendCommands(commandMessages []MessageComand, message string, rowAmount int) {
 	var commandsRows = make([][]tgbotapi.KeyboardButton, rowAmount)
 
 	var step = int(math.Ceil(float64(len(commandMessages)) / float64(rowAmount)))
 
 	for i, commandMessage := range commandMessages {
-		commandsRows[i/step] = append(commandsRows[i/step], tgbotapi.NewKeyboardButton(commandMessage))
+
+		commandRaw := tgbotapi.NewKeyboardButton(commandMessage.Command)
+
+		commandsRows[i/step] = append(commandsRows[i/step], commandRaw)
 	}
 
 	msg := tgbotapi.NewMessage(chat.ChatId, message)
@@ -72,10 +75,15 @@ func (chat Chat) GetUpdate() string {
 	return ""
 }
 
+const Start = -2
+
 func (chat Chat) GetUpdateFunc(f func(update tgbotapi.Update) int) int {
 	var result int
 	for update := range chat.Updates {
 		if update.Message != nil {
+			if update.Message.Text == "/start" {
+				return Start
+			}
 			continue
 		}
 		if result = f(update); result != -1 {
