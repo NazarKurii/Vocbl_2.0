@@ -153,6 +153,7 @@ func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, c
 	for i := 0; i >= 0; {
 		if zeroTranslations {
 			messageId = user.Chat.SendMenue(menues[i], choise.ChoseMessage)
+			zeroTranslations = false
 		} else {
 			user.Chat.Bot.Send(tgbotapi.NewEditMessageReplyMarkup(user.Chat.ChatId, messageId, menues[i]))
 		}
@@ -178,16 +179,16 @@ func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, c
 
 		case Custom:
 			translation, status := CustomAdding(user, choise)
-			translations = append(translations, translation)
+			zeroTranslations = true
 			switch status {
 			case AddMore:
 				continue
 			case Save:
-				i = -1
+				translations = append(translations, translation)
+
 			}
 		case Chat.Start:
 			return nil, User.StartEroor
-		default:
 
 		}
 
@@ -201,13 +202,13 @@ func CustomAdding(user User.User, choise Choise) (string, int) {
 	user.Chat.SendMessege(choise.CustomMessage)
 	translation := user.Chat.GetUpdate()
 
-	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "save"}, Chat.MessageComand{choise.Choises, "add"}}, fmt.Sprintf("%v \"%v\" added", choise.Added, translation), 1)
+	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "save"}, Chat.MessageComand{"Don't save", "false"}}, fmt.Sprintf("%v \"%v\" added", choise.Added, translation), 1)
 	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 
 		switch update.CallbackQuery.Data {
 		case "save":
 			return Save
-		case "add":
+		case "false":
 			return AddMore
 		default:
 			return Contine
