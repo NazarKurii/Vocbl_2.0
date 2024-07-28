@@ -11,7 +11,6 @@
 		✅ Studying Cards:
 		Vocble also helps you study new expressions. You can get a list of cards you need to study today, and then you will be quizzed by Vocble so you can learn the expressions better. Vocable allows you to study cards witch are used in todays test if you have already failed it, othervise you cannot get acces to todays test cards.
 		
-		✅ Types of Quizzes:
 		There are two types of quizzes Vocble provides:
 		1. Test Quiz - used for the daily test.
 		2. Studying Quiz - used for the studying process.
