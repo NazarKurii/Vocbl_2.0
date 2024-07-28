@@ -114,5 +114,8 @@ func (e Expretion) Translations() string {
 		translations += translation + ", "
 	}
 
+	if translations == "" {
+		return translations
+	}
 	return translations[:len(translations)-2]
 }

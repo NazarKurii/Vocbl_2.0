@@ -44,6 +44,8 @@ func VerifyStorage() {
 
 				}
 			}
+			storageData[j].Storage[i].CreationDate = formatedTodaysDate
+			storageData[j].Storage[i].ReapeatDate = formatedTodaysDate
 		}
 
 	}

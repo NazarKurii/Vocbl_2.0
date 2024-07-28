@@ -57,7 +57,7 @@ func main() {
 		case "/quiz":
 			err = quizCommand(user)
 		case "/study":
-			//err = study(user)
+			err = study(user)
 		case "/remove":
 			err = remove(user)
 		case "/edit":
@@ -72,15 +72,110 @@ func main() {
 
 }
 
+func study(user User.User) error {
+	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"New cards", "new"}, Chat.MessageComand{"Test cards", "test"}}, "Welcome to studying mode!\nWhar are we studying today?", 1)
+
+	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+		switch update.CallbackQuery.Data {
+		case "new":
+			return new
+		case "test":
+			return test
+		default:
+			return -1
+		}
+	})
+
+	if status == Chat.Start {
+		user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
+		return User.StartEroor
+	}
+
+	for true {
+		var successRate int
+		switch status {
+		case new:
+			expretiondsToStudy := user.GetNewCardsToStudy()
+			if len(expretiondsToStudy) == 0 {
+				user.Chat.SendMessege("There are no new cards today...")
+				return nil
+			}
+
+			rate, err := user.StudyingProcces(expretiondsToStudy)
+			successRate = rate
+			if err != nil {
+				user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
+				return User.StartEroor
+			}
+
+		case test:
+			if !user.TestInfo.CanPassTest {
+
+				expretiondsToStudy := user.GetTestExpretions()
+				if len(expretiondsToStudy) == 0 {
+					user.Chat.SendMessege("There are no test cards today...")
+					return nil
+				}
+
+				rate, err := user.StudyingProcces(expretiondsToStudy)
+				successRate = rate
+				if err != nil {
+					user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
+					return User.StartEroor
+				}
+			} else {
+				user.Chat.SendMessege("You need to fuck your todays test up, if you want to repeat the test cards...")
+				return nil
+			}
+		}
+		var rateMessage string
+
+		switch {
+		case successRate == 100:
+			rateMessage = "Your success rate is 💯%"
+		case successRate < 100 && successRate > 70:
+			rateMessage = fmt.Sprintf("Your success rate  is \"%v%%\"", successRate)
+		case successRate < 70:
+			rateMessage = fmt.Sprintf("Your success rate is \"%v%%\"\nYou need to work harder...", successRate)
+		}
+
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Try again", "true"}, Chat.MessageComand{"Leave", "false"}}, rateMessage, 2)
+		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+			switch update.CallbackQuery.Data {
+			case "true":
+				return True
+			case "false":
+				return False
+			default:
+				return -1
+			}
+		})
+
+		switch status {
+		case Chat.Start:
+			user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
+			return User.StartEroor
+		case False:
+			user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
+			return User.StartEroor
+		case True:
+		}
+
+	}
+	return nil
+}
+
 const (
 	Yes = iota
 	No
 	Stop
+	new
+	test
 	Continue = -1
 )
 
 func edit(user User.User) error {
-	user.Chat.SendMessege("Expretion to edit:")
+	user.Chat.SendMessege("Card to edit:")
 	userReprly := user.Chat.GetUpdate()
 
 	if userReprly == "/start" {
@@ -228,7 +323,7 @@ const (
 )
 
 func remove(user User.User) error {
-	user.Chat.SendMessege("Expretion to remove:")
+	user.Chat.SendMessege("Card to remove:")
 	userReprly := user.Chat.GetUpdate()
 
 	if userReprly == "/start" {
@@ -239,7 +334,7 @@ func remove(user User.User) error {
 
 	if oldExpretion, exists := user.FindExpretion(userReprly); exists {
 		oldExpretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
-		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"No", "no"}}, "Remove expretion?", 1)
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"No", "no"}}, "Remove card?", 1)
 		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 			if update.Message != nil {
 				return Continue
@@ -257,11 +352,11 @@ func remove(user User.User) error {
 		case Chat.Start:
 			return User.StartEroor
 		case No:
-			user.Chat.SendMessege("Eexpretion wasnt removed...")
+			user.Chat.SendMessege("Card wasnt removed...")
 
 		case Yes:
 			go user.RemoveFromUserStorage(oldExpretion)
-			user.Chat.SendMessege("Eexpretion was removed...")
+			user.Chat.SendMessege("Card was removed...")
 
 		}
 	} else {
@@ -272,7 +367,7 @@ func remove(user User.User) error {
 }
 
 func card(user User.User) error {
-	user.Chat.SendMessege("Provide expretion:")
+	user.Chat.SendMessege("Provide card:")
 	userReprly := user.Chat.GetUpdate()
 	if userReprly == "/start" {
 		return User.StartEroor
@@ -299,7 +394,7 @@ func addExpretion(user User.User) error {
 	var newExpretion = Expretion.Expretion{Data: userReprly}
 	if oldExpretion, exists := user.FindExpretion(userReprly); exists {
 		oldExpretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
-		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"Leave both", "no"}, Chat.MessageComand{"Leave(stop adding)", "leave"}}, "Expretion already exists in your vocbl. \n\nWant to replase it?", 1)
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"Leave both", "no"}, Chat.MessageComand{"Leave(stop adding)", "leave"}}, "Card already exists in your vocbl. \n\nWant to replase it?", 1)
 		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 			if update.Message != nil {
 				return Continue
@@ -321,7 +416,7 @@ func addExpretion(user User.User) error {
 		switch status {
 		case Yes:
 			user.RemoveFromUserStorage(newExpretion)
-			user.Chat.SendMessege("The old expretion removed.\nContinue adding new Expretion😁")
+			user.Chat.SendMessege("The old card removed.\nContinue adding new card")
 		case No:
 			user.Chat.SendMessege("Ok, we're leaving both😁")
 		case Stop:
@@ -347,7 +442,7 @@ func addExpretion(user User.User) error {
 				}
 			} else {
 				user.AddToUserStorage(newExpretion)
-				user.Chat.SendMessege("Translation added")
+				user.Chat.SendMessege("Card was added")
 				user.Chat.SendMessege("What can I do for you😁?")
 
 			}
@@ -401,7 +496,7 @@ func getQuizExpretionsAmount(user User.User, totalStorageAmount int) (int, error
 		}
 
 		if totalStorageAmount < amountOfExpretions {
-			user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "true"}, Chat.MessageComand{"Change", "false"}}, fmt.Sprintf("Your vocbl consists less that \"%v\" expretions. The amount is set to \"%v\"", amountOfExpretions, totalStorageAmount), 1)
+			user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "true"}, Chat.MessageComand{"Change", "false"}}, fmt.Sprintf("Your vocbl consists less that \"%v\" cards. The amount is set to \"%v\"", amountOfExpretions, totalStorageAmount), 1)
 			status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 				switch update.CallbackQuery.Data {
 				case "true":
@@ -437,7 +532,7 @@ func quizCommand(user User.User) error {
 	user.Chat.SendMessege("Welcome to quize!")
 	totalStorageAmount := len(user.Storage)
 	if totalStorageAmount < 5 {
-		user.Chat.SendMessege("Sorry, but to get quized you have to add al leat 5 expretions to your vocbl😁...")
+		user.Chat.SendMessege("Sorry, but to get quized you have to add al leat 5 cards to your vocbl😁...")
 		return User.StartEroor
 	}
 
@@ -518,7 +613,7 @@ func getExpretionAmount(user User.User) int {
 	for isntNumber {
 		isntNumber = false
 
-		user.Chat.SendMessege("Provide expretions amount:")
+		user.Chat.SendMessege("Provide cards amount:")
 		usersReply := user.Chat.GetUpdate()
 		amountOfExpretions, err := strconv.Atoi(usersReply)
 		if err != nil {
@@ -555,7 +650,7 @@ func daylyTest(user User.User) error {
 	var amountOfTestExpretions = len(testExpretions)
 	var maxMistakes = int(float64(amountOfTestExpretions) * 0.2)
 	if amountOfTestExpretions == 0 && user.TestInfo.CanPassTest {
-		user.Chat.SendMessege("There are no expretions to test today😢...")
+		user.Chat.SendMessege("There are no cards to test today😢...")
 		return User.StartEroor
 	} else if !user.TestInfo.CanPassTest {
 		user.Chat.SendMessege("You've failed, study and try tomorrow🖕...")

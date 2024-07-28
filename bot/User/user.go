@@ -62,14 +62,15 @@ func (user User) StartMenue() string {
 		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Show services", "s"}}, `✅ Vocble Overview:
 		Vocble was developed to help people extend their vocabulary. That means you have to be fair with Vocble and, more importantly, with yourself. If you want to make progress, Vocble strictly recommends following the technique provided below, which explains how to pass daily tests and quizzes.
 		
-		✅ Adding Expressions:
-		You can add expressions with their translations, examples, pronunciations, and additional notes to your Vocble. You can choose translations/examples given to you by Vocble or create custom ones.
+		✅ Adding New Cards:
+		Cards - expretions with their translations, examples, pronunciations, and additional notes.
+		You can add cards to your Vocble using "/add" command and remove them using "/remove" command. You can choose translations/examples given to you by Vocble or create custom ones during adding-card procces.
 		
 		✅ Testing Schedule:
-		Vocble automatically defines the date when you need to test already added expressions, so you won't forget new expressions. Test days count from the day of the first test: 1/2/3/7/14/30/60/120/360. However, you can only pass the test twice a day. If you fail, the test day will be changed to the next day.
+		Vocble automatically defines the date when you need to test already added expressions(cards), so you won't forget them. Test days count from the day of the first test: 1/2/3/7/14/30/60/120/360. However, if you fail, the test date will be changed to the next day and day counter will be set to "2".
 		
-		✅ Studying Expressions:
-		Vocble also helps you study new expressions. You can get a list of expressions you need to study today, and then you will be quizzed by Vocble so you can learn the expressions better.
+		✅ Studying Cards:
+		Vocble also helps you study new expressions. You can get a list of cards you need to study today, and then you will be quizzed by Vocble so you can learn the expressions better. Vocable allows you to study cards witch are used in todays test if you have already failed it, othervise you cannot get acces to todays test cards.
 		
 		✅ Types of Quizzes:
 		There are two types of quizzes Vocble provides:
@@ -342,7 +343,7 @@ func (user User) FailedTestUpdateDates() {
 	for i, expretion := range user.Storage {
 		if expretion.ReapeatDate == time.Now().Format("2006.01.02") {
 			user.Storage[i].Repeated = 1
-			user.Storage[i].DefineRepeatDate()
+
 		}
 	}
 
@@ -350,4 +351,35 @@ func (user User) FailedTestUpdateDates() {
 	user.TestInfo.DaylyTestTries = 2
 	user.TestInfo.LastFailDate = time.Now().Format("2006.01.02")
 	user.SaveUsersData()
+}
+
+func (user User) StudyingProcces(expretions []Expretion.Expretion) (int, error) {
+	for _, expretion := range expretions {
+		expretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
+	}
+	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Get quized", "true"}}, "When you are finished remembering cards press button below🙃", 1)
+	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+		switch update.CallbackQuery.Data {
+		case "true":
+			return 0
+		default:
+			return -1
+		}
+	})
+	if status == Chat.Start {
+		return 0, StartEroor
+	}
+	return user.Quiz(expretions, false)
+}
+
+func (user User) GetNewCardsToStudy() []Expretion.Expretion {
+	var expretionsToStudy []Expretion.Expretion
+
+	todaysDate := time.Now().Format("2006.01.02")
+	for _, expretion := range user.Storage {
+		if expretion.CreationDate == todaysDate {
+			expretionsToStudy = append(expretionsToStudy, expretion)
+		}
+	}
+	return expretionsToStudy
 }
