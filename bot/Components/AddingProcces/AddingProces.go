@@ -199,7 +199,7 @@ func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, c
 }
 
 func CustomAdding(user User.User, choise Choise) (string, int) {
-	user.Chat.SendMessege(choise.CustomMessage)
+	user.Chat.SendMessege(choise.CustomMessage + ":")
 	translation := user.Chat.GetUpdate()
 
 	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Save", "save"}, Chat.MessageComand{"Don't save", "false"}}, fmt.Sprintf("%v \"%v\" added", choise.Added, translation), 1)
