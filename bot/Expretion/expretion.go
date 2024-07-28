@@ -21,32 +21,34 @@ type Expretion struct {
 	PronunciationPath string   `json:"pronunciation_path"`
 }
 
-func (e Expretion) DefineRepeatDate() string {
+func (e *Expretion) DefineRepeatDate() {
 
 	date, _ := time.Parse("2006.01.02", e.ReapeatDate)
 
 	switch e.Repeated {
+	case 0:
+		date = date.AddDate(0, 0, 1)
 	case 1:
 		date = date.AddDate(0, 0, 1)
 	case 2:
-		date = date.AddDate(0, 0, 2)
+		date = date.AddDate(0, 0, 1)
 	case 3:
-		date = date.AddDate(0, 0, 3)
+		date = date.AddDate(0, 0, 1)
 	case 4:
-		date = date.AddDate(0, 0, 7)
+		date = date.AddDate(0, 0, 4)
 	case 5:
-		date = date.AddDate(0, 0, 14)
+		date = date.AddDate(0, 0, 7)
 	case 6:
-		date = date.AddDate(0, 0, 30)
+		date = date.AddDate(0, 0, 16)
 	case 7:
-		date = date.AddDate(0, 0, 60)
+		date = date.AddDate(0, 0, 30)
 	case 8:
-		date = date.AddDate(0, 0, 120)
+		date = date.AddDate(0, 0, 60)
 	case 9:
-		date = date.AddDate(0, 0, 360)
+		date = date.AddDate(0, 0, 240)
 	}
 
-	return date.Format("2006.01.02")
+	e.ReapeatDate = date.Format("2006.01.02")
 }
 
 type Card struct {
@@ -114,5 +116,7 @@ func (e Expretion) Translations() string {
 		translations += translation + ", "
 	}
 
+	if translations == "" {
+	}
 	return translations[:len(translations)-2]
 }
