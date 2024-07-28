@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"os"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
 	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
@@ -15,10 +17,15 @@ import (
 )
 
 type User struct {
-	UserId         int64                 `json:"user_id"`
-	Storage        []Expretion.Expretion `json:"storage"`
-	Chat           Chat.Chat             `json:"chat"`
-	DaylyTestTries int                   `json:"dayly_test_tries"`
+	UserId  int64                 `json:"user_id"`
+	Storage []Expretion.Expretion `json:"storage"`
+	Chat    Chat.Chat             `json:"chat"`
+
+	TestInfo struct {
+		DaylyTestTries int    `json:"dayly_test_tries"`
+		LastFailDate   string `json:"last_fail_date"`
+		CanPassTest    bool   `json:"can_pass_test"`
+	}
 }
 
 const (
@@ -128,12 +135,8 @@ func (user User) FindExpretionsByDate(date string, dateType int) ([]Expretion.Ex
 
 func (user User) RemoveFromUserStorage(expretion Expretion.Expretion) {
 
-	expretionToRemove := user.Storage[slices.IndexFunc(user.Storage, func(exp Expretion.Expretion) bool {
-		return exp.Data == expretion.Data
-	})]
-
 	user.Storage = slices.DeleteFunc(user.Storage, func(exp Expretion.Expretion) bool {
-		return exp.Data == expretionToRemove.Data
+		return strings.ToLower(exp.Data) == strings.ToLower(expretion.Data)
 	})
 	user.SaveUsersData()
 
@@ -193,7 +196,7 @@ const (
 	correct
 )
 
-func (user User) Quiz(expretions []Expretion.Expretion, test bool) int {
+func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) {
 
 	var totalAnswers = len(expretions)
 
@@ -209,12 +212,14 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) int {
 			case "true":
 				return showAnswers
 			case "false":
-
 				return notSure
 			default:
 				return -1
 			}
 		})
+		if status == Chat.Start {
+			return 0, StartEroor
+		}
 
 		if status == showAnswers {
 			var fakeAnswer2, fakeUnswer1 string
@@ -252,6 +257,9 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) int {
 				}
 			})
 		}
+		if status == Chat.Start {
+			return 0, StartEroor
+		}
 
 		if status == correct {
 			user.Chat.SendMessege("Correct✅")
@@ -267,9 +275,9 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) int {
 			}
 		}
 
-		if i != totalAnswers-1 {
+		if i != totalAnswers-1 && !test {
 			user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Continue", "continue"}}, "Ready to move on?", 1)
-			user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+			status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 				switch update.CallbackQuery.Data {
 				case "continue":
 					return correct
@@ -277,12 +285,16 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) int {
 					return -1
 				}
 			})
+			if status == Chat.Start {
+
+				return 0, StartEroor
+
+			}
 		}
 
 	}
 
-	user.Chat.SendMessege(fmt.Sprintf("%v - %v / %v * %v", 100, wrongAnswers, totalAnswers, 100))
-	return 100 - int(float64(wrongAnswers)/float64(totalAnswers)*100.0)
+	return 100 - int(float64(wrongAnswers)/float64(totalAnswers)*100.0), nil
 
 }
 
@@ -302,4 +314,40 @@ func (user User) getWrongAnswers(amount int) []string {
 
 	}
 	return wrongAnswers
+}
+
+func (user User) GetTestExpretions() []Expretion.Expretion {
+	var testExpretions []Expretion.Expretion
+
+	for _, expretion := range user.Storage {
+		if expretion.ReapeatDate == time.Now().Format("2006.01.02") {
+			testExpretions = append(testExpretions, expretion)
+		}
+	}
+	return testExpretions
+}
+
+func (user User) PassedTestUpdateDates() {
+	for i, expretion := range user.Storage {
+		if expretion.ReapeatDate == time.Now().Format("2006.01.02") {
+			user.Storage[i].Repeated++
+			user.Storage[i].DefineRepeatDate()
+		}
+	}
+	user.TestInfo.DaylyTestTries = 2
+	user.SaveUsersData()
+}
+
+func (user User) FailedTestUpdateDates() {
+	for i, expretion := range user.Storage {
+		if expretion.ReapeatDate == time.Now().Format("2006.01.02") {
+			user.Storage[i].Repeated = 1
+			user.Storage[i].DefineRepeatDate()
+		}
+	}
+
+	user.TestInfo.CanPassTest = false
+	user.TestInfo.DaylyTestTries = 2
+	user.TestInfo.LastFailDate = time.Now().Format("2006.01.02")
+	user.SaveUsersData()
 }
