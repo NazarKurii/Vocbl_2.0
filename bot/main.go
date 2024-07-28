@@ -64,6 +64,8 @@ func main() {
 			err = edit(user)
 		case "/vocbl":
 			user.Chat.SendMessege(fmt.Sprintf("Your vocbl cosists \"%v\" cards😁", len(user.Storage)))
+		case "/vocbl_all":
+			vocblAll(user)
 		default:
 			user.Chat.SendMessege("Unknown command🥲")
 		}
@@ -72,6 +74,12 @@ func main() {
 		}
 	}
 
+}
+
+func vocblAll(user User.User) {
+	for _, card := range user.Storage {
+		card.SendCard(user.Chat.Bot, user.Chat.ChatId)
+	}
 }
 
 func study(user User.User) error {

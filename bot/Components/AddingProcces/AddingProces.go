@@ -23,13 +23,23 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 
 	newExpretion.Data = strings.ToLower(newExpretion.Data)
 
-	translatedData, err := ChooseTranslations(user, data.Translations, Choise{"Choose translations:", "Custom translation:", "Translations", "Translation"})
+	translatedData, err := ChooseTranslations(user, data.Translations, Choise{"Choose translations:", "Custom translation", "Translations", "Translation"})
 	if err != nil {
 		return Expretion.Expretion{}, err
 	}
 	newExpretion.TranslatedData = translatedData
 
-	examples, err := ChooseExamples(user, data.Translations, Choise{"Choose exmples:", "Custom example:", "Examples", "Example"})
+	data.Translations = slices.DeleteFunc(data.Translations, func(e ExpretionData.Translation) bool {
+		var result = true
+		for _, translation := range translatedData {
+			if translation == e.Translation {
+				result = false
+			}
+		}
+		return result
+	})
+
+	examples, err := ChooseExamples(user, data.Translations, Choise{"Choose exmples:", "Custom example", "Examples", "Example"})
 	if err != nil {
 		return Expretion.Expretion{}, err
 	}

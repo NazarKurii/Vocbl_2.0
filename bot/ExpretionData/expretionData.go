@@ -26,11 +26,6 @@ const (
 	RequestAttemts    = 3
 )
 
-type Pronunciation struct {
-	Phonetic string
-	Path     string
-}
-
 type Translation struct {
 	Translation string
 	Examples    []string
@@ -219,6 +214,28 @@ func filterVerbs(translations []Translation) []Translation {
 	return infinitives
 }
 
+type Pronunciation struct {
+	Phonetic string
+	Path     string
+}
+
+type Sound struct {
+	Audio string `json:"audio"`
+}
+
+type Pr struct {
+	Mw    string `json:"mw"`
+	Sound Sound  `json:"sound"`
+}
+
+type Hwi struct {
+	Prs []Pr `json:"prs"`
+}
+
+type Responsed struct {
+	Hwi Hwi `json:"hwi"`
+}
+
 func getPronuciation(expretion string, data []Response) Pronunciation {
 	var pronunciation Pronunciation
 	for _, pr := range data[0].Hwi.Prs {
@@ -226,10 +243,27 @@ func getPronuciation(expretion string, data []Response) Pronunciation {
 			pronunciation.Phonetic = pr.Mw
 		}
 		if pr.Sound.Audio != "" {
-			audioURL := fmt.Sprintf("https://media.merriam-webster.com/soundc11/%s/%s.wav", string(pr.Sound.Audio[0]), pr.Sound.Audio)
-			downloadFile(expretion, audioURL)
-			pronunciation.Path = fmt.Sprintf("../audio/%v", strings.ToLower(expretion))
+			// Determine the subdirectory
+			audio := pr.Sound.Audio
+			var subdirectory string
+			if strings.HasPrefix(audio, "bix") {
+				subdirectory = "bix"
+			} else if strings.HasPrefix(audio, "gg") {
+				subdirectory = "gg"
+			} else if audio[0] >= '0' && audio[0] <= '9' || audio[0] == '_' {
+				subdirectory = "number"
+			} else {
+				subdirectory = string(audio[0])
+			}
 
+			// Construct the URL
+			audioURL := fmt.Sprintf("https://media.merriam-webster.com/audio/prons/en/us/mp3/%s/%s.mp3", subdirectory, audio)
+			err := downloadFile(expretion, audioURL)
+			if err == nil {
+				pronunciation.Path = fmt.Sprintf("../audio/%v.mp3", strings.ToLower(expretion))
+			} else {
+				fmt.Println("Error downloading file:", err)
+			}
 		}
 	}
 
@@ -238,7 +272,8 @@ func getPronuciation(expretion string, data []Response) Pronunciation {
 
 func downloadFile(expretion string, url string) error {
 	// Create the file
-	out, err := os.Create(fmt.Sprintf("../audio/%v", strings.ToLower(expretion)))
+	filePath := fmt.Sprintf("../audio/%v.mp3", strings.ToLower(expretion))
+	out, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
@@ -256,10 +291,19 @@ func downloadFile(expretion string, url string) error {
 		return fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	// Writer the body to file
+	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		return err
+	}
+
+	// Check if the file is empty
+	fileInfo, err := out.Stat()
+	if err != nil {
+		return err
+	}
+	if fileInfo.Size() == 0 {
+		return fmt.Errorf("downloaded file is empty: %v", filePath)
 	}
 
 	return nil

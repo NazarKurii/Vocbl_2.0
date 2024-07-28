@@ -1,7 +1,6 @@
 package Chat
 
 import (
-	"fmt"
 	"math"
 	"slices"
 
@@ -115,7 +114,6 @@ func NewMenues(options []MessageComand, customInfo string) []tgbotapi.InlineKeyb
 
 	var max = len(optionBunches) - 1
 
-	fmt.Println(max, "MAXXXXXXXXX>>>>>>>>>>>>>>>>>?????????????")
 	var menues = make([]tgbotapi.InlineKeyboardMarkup, 0, len(optionBunches))
 	for i, options := range optionBunches {
 
@@ -146,13 +144,29 @@ func NewMenues(options []MessageComand, customInfo string) []tgbotapi.InlineKeyb
 	return menues
 }
 func (chat Chat) SendMenue(replyMurkUp tgbotapi.InlineKeyboardMarkup, message string) int {
-	fmt.Println("Test3........................", chat.Bot == nil)
+
 	msg := tgbotapi.NewMessage(chat.ChatId, message)
 	msg.ReplyMarkup = replyMurkUp
 	sentMessage, err := chat.Bot.Send(msg)
 	if err != nil {
-		panic(err)
+		var commandRaws = make([][]tgbotapi.InlineKeyboardButton, 2)
+
+		commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("✖️", "_"))
+
+		commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("Save", "save"))
+
+		commandRaws[1] = append(commandRaws[1], tgbotapi.NewInlineKeyboardButtonData("✖️", "_"))
+
+		commandRaws[0] = append(commandRaws[0], tgbotapi.NewInlineKeyboardButtonData("custom", "custom"))
+
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(commandRaws...)
+
+		_, err := chat.Bot.Send(msg)
+		if err != nil {
+			panic(err)
+		}
 	}
+
 	return sentMessage.MessageID
 }
 

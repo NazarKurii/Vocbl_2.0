@@ -2,7 +2,6 @@ package Expretion
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -85,27 +84,15 @@ func (e Expretion) SendCard(bot *tgbotapi.BotAPI, chatId int64) {
 
 	card += fmt.Sprintf("\n\nTest date: %v", e.ReapeatDate)
 
-	voiceFile, err := os.Open(e.PronunciationPath)
-	fmt.Println(err, "<<<<,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
-	if err == nil {
+	voice := tgbotapi.NewVoiceUpload(chatId, e.PronunciationPath)
+	voice.Caption = card
 
-		defer voiceFile.Close()
-
-		voice := tgbotapi.NewVoiceUpload(chatId, tgbotapi.FileReader{
-			Name:   "voice.ogg",
-			Reader: voiceFile,
-			Size:   -1,
-		})
-
-		voice.Caption = card
-
-		bot.Send(voice)
-	} else {
-
-		bot.Send(tgbotapi.NewMessage(chatId, card))
-		fmt.Println("Error opening voice file:", err)
-
+	_, err := bot.Send(voice)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatId, card)
+		bot.Send(msg)
 	}
+
 }
 
 func (e Expretion) Translations() string {
