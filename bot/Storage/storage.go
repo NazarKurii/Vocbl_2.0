@@ -20,14 +20,31 @@ func VerifyStorage() {
 	todaysDate, _ := time.Parse("2006.01.02", time.Now().Format("2006.01.02"))
 	formatedTodaysDate := todaysDate.Format("2006.01.02")
 	for j, user := range storageData {
+		if !user.TestInfo.CanPassTest {
+			if date, _ := time.Parse("2006.01.02", user.TestInfo.LastFailDate); date.Before(todaysDate) {
+				storageData[j].TestInfo.CanPassTest = true
+				storageData[j].TestInfo.DaylyTestTries = 2
+			}
+
+		}
 		for i, expretion := range user.Storage {
 
 			repeatDate, _ := time.Parse("2006.01.02", expretion.ReapeatDate)
 
 			if repeatDate.Before(todaysDate) {
 				storageData[j].Storage[i].ReapeatDate = formatedTodaysDate
-				storageData[j].DaylyTestTries = 2
+
 			}
+
+			if expretion.Repeated == 0 {
+				creationDate, _ := time.Parse("2006.01.02", expretion.CreationDate)
+				if creationDate.Before(todaysDate) {
+					storageData[j].Storage[i].CreationDate = formatedTodaysDate
+					storageData[j].Storage[i].Repeated = 0
+
+				}
+			}
+
 		}
 
 	}
@@ -67,7 +84,7 @@ func DefineUser(userId int64) (User.User, error) {
 }
 
 func CreateUser(bot *tgbotapi.BotAPI, userId int64, updates tgbotapi.UpdatesChannel) User.User {
-	var _, storage = OpenStorage()
+	var users, storage = OpenStorage()
 	var newUser = User.User{
 		UserId: userId,
 		Chat: Chat.Chat{
@@ -75,10 +92,19 @@ func CreateUser(bot *tgbotapi.BotAPI, userId int64, updates tgbotapi.UpdatesChan
 			Updates: updates,
 			ChatId:  userId,
 		},
-		DaylyTestTries: 2,
+
+		TestInfo: struct {
+			DaylyTestTries int    `json:"dayly_test_tries"`
+			LastFailDate   string `json:"last_fail_date"`
+			CanPassTest    bool   `json:"can_pass_test"`
+		}{
+			2,
+			"",
+			true,
+		},
 	}
 
-	WriteToStorage([]User.User{newUser}, storage)
+	WriteToStorage(append(users, newUser), storage)
 
 	return newUser
 }

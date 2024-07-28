@@ -62,8 +62,10 @@ func main() {
 			err = remove(user)
 		case "/edit":
 			err = edit(user)
+		case "/vocbl":
+			user.Chat.SendMessege(fmt.Sprintf("Your vocbl cosists \"%v\" cards😁", len(user.Storage)))
 		default:
-			//Chat.Chat{bot, updates, update.Message.Chat.ID}.SendMessege("Unknown comand:(")
+			user.Chat.SendMessege("Unknown command🥲")
 		}
 		if err != nil {
 			user.Services()
