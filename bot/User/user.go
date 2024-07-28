@@ -107,7 +107,7 @@ func (user User) StartMenue() string {
 }
 
 func (user User) Services() {
-	user.Chat.SendCommands([]Chat.MessageComand{Chat.MessageComand{"Add Expretion", "/add"}, Chat.MessageComand{"Remove Expretion", "/remove"}, Chat.MessageComand{"Get Quized", "/quiz"}, Chat.MessageComand{"Expretion Card", "/card"}, Chat.MessageComand{"Test", "/test"}, Chat.MessageComand{"Study", "/study"}}, "What can I do for you😁?", 3)
+	user.Chat.SendCommands([]Chat.MessageComand{Chat.MessageComand{"Add Card", "/add"}, Chat.MessageComand{"Remove Card", "/remove"}, Chat.MessageComand{"Get Quized", "/quiz"}, Chat.MessageComand{"Find Card", "/card"}, Chat.MessageComand{"Test", "/test"}, Chat.MessageComand{"Study", "/study"}}, "What can I do for you😁?", 3)
 }
 
 func (user User) FindExpretionsByDate(date string, dateType int) ([]Expretion.Expretion, []Expretion.Expretion) {
