@@ -75,8 +75,8 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 	newExpretion.Pronunciation = data.Pronunciation.Phonetic
 	newExpretion.Repeated = 0
 
-	newExpretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
-	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Yes", "yes"}, Chat.MessageComand{"No", "no"}, Chat.MessageComand{"Fill again", "again"}}, "Add cart?", 2)
+	newExpretion.SendCardAddindg(user.Chat.Bot, user.Chat.ChatId)
+
 	status = user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 
 		switch update.CallbackQuery.Data {
@@ -106,7 +106,8 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 }
 
 func ChooseExamples(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) ([]string, error) {
-	var translationsCommands = make([]Chat.MessageComand, len(translationsWithExamples))
+	length := len(translationsWithExamples)
+	var translationsCommands = make([]Chat.MessageComand, length)
 	for i, translationWithExamples := range translationsWithExamples {
 		for _, example := range translationWithExamples.Examples {
 			translationsCommands[i].Command = example
@@ -114,7 +115,7 @@ func ChooseExamples(user User.User, translationsWithExamples []ExpretionData.Tra
 		}
 	}
 
-	var result, err = ChoseOptions(user, translationsCommands, choise, true)
+	var result, err = ChoseOptions(user, translationsCommands, choise, true, length == 0)
 	if err != nil {
 		return nil, err
 	}
@@ -123,13 +124,14 @@ func ChooseExamples(user User.User, translationsWithExamples []ExpretionData.Tra
 
 func ChooseTranslations(user User.User, translationsWithExamples []ExpretionData.Translation, choise Choise) ([]string, error) {
 
-	var translationsCommands = make([]Chat.MessageComand, len(translationsWithExamples))
+	length := len(translationsWithExamples)
+	var translationsCommands = make([]Chat.MessageComand, length)
 	for i, translationWithExample := range translationsWithExamples {
 		translationsCommands[i].Command = translationWithExample.Translation
 		translationsCommands[i].Callback = translationWithExample.Translation
 	}
 
-	var result, err = ChoseOptions(user, translationsCommands, choise, false)
+	var result, err = ChoseOptions(user, translationsCommands, choise, false, length == 0)
 	if err != nil {
 		return nil, err
 	}
@@ -143,11 +145,21 @@ type Choise struct {
 	Added         string
 }
 
-func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, canBeEmpty bool) ([]string, error) {
+func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, canReturnNothing bool, isEmpty bool) ([]string, error) {
 
 	menues := Chat.NewMenues(options, choise.CustomMessage)
 	messageId := user.Chat.SendMenue(menues[0], choise.ChoseMessage)
 	var translations []string
+
+	var empty int
+	if !isEmpty {
+
+		for _, menue := range menues {
+			empty += len(menue.InlineKeyboard) - 2
+		}
+	} else {
+		empty = -1
+	}
 
 	var zeroTranslations bool
 	for i := 0; i >= 0; {
@@ -159,7 +171,7 @@ func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, c
 		}
 		switch translation, status := GetOptionsUpdate(user); status {
 		case Save:
-			if len(translations) == 0 && !canBeEmpty {
+			if len(translations) == 0 && !canReturnNothing {
 				user.Chat.SendMessege(fmt.Sprintf("%v field cannot be empty...", choise.Added))
 				zeroTranslations = true
 				continue
@@ -176,6 +188,10 @@ func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, c
 				return t[0].Text == translation
 			})
 			translations = append(translations, translation)
+			empty--
+			if empty == 0 {
+				i = -1
+			}
 
 		case Custom:
 			translation, status := CustomAdding(user, choise)
@@ -191,7 +207,6 @@ func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, c
 			return nil, User.StartEroor
 
 		}
-
 	}
 
 	return translations, nil

@@ -97,7 +97,7 @@ func (user User) showListOfExpretions(expretions []Expretion.Expretion) {
 
 func (user User) SaveUsersData() {
 	storage, _ := os.OpenFile("../vocblStorage/storage.json", os.O_RDWR, 0644)
-
+	defer storage.Close()
 	oldStorageData, _ := io.ReadAll(storage)
 	var storageData []User
 	_ = json.Unmarshal(oldStorageData, &storageData)

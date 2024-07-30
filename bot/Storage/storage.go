@@ -16,6 +16,7 @@ import (
 func VerifyStorage() {
 
 	storageData, storage := OpenStorage()
+	defer storage.Close()
 
 	todaysDate, _ := time.Parse("2006.01.02", time.Now().Format("2006.01.02"))
 	formatedTodaysDate := todaysDate.Format("2006.01.02")
@@ -64,7 +65,7 @@ func OpenStorage() ([]User.User, *os.File) {
 }
 
 func WriteToStorage(u []User.User, storage *os.File) {
-
+	defer storage.Close()
 	var users, _ = json.Marshal(u)
 
 	_ = storage.Truncate(0)
@@ -75,7 +76,8 @@ func WriteToStorage(u []User.User, storage *os.File) {
 }
 
 func DefineUser(userId int64) (User.User, error) {
-	var storage, _ = OpenStorage()
+	var storage, st = OpenStorage()
+	defer st.Close()
 	userIndex := slices.IndexFunc(storage, func(u User.User) bool { return u.UserId == userId })
 	if userIndex == -1 {
 		return User.User{}, errors.New("User does not exist")
@@ -85,6 +87,7 @@ func DefineUser(userId int64) (User.User, error) {
 
 func CreateUser(bot *tgbotapi.BotAPI, userId int64, updates tgbotapi.UpdatesChannel) User.User {
 	var users, storage = OpenStorage()
+
 	var newUser = User.User{
 		UserId: userId,
 		Chat: Chat.Chat{

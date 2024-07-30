@@ -42,24 +42,24 @@ func main() {
 			} else {
 				user.Chat = Chat.Chat{bot, updates, update.Message.Chat.ID}
 			}
-			var err error
+			var err = User.StartEroor
 			switch update.Message.Commands() {
 			case "/start":
 				user.StartMenue()
 			case "/add":
-				err = addExpretion(user)
+				addExpretion(user)
 			case "/card":
-				err = card(user)
+				card(user)
 			case "/test":
-				err = daylyTest(user)
+				daylyTest(user)
 			case "/quiz":
-				err = quizCommand(user)
+				quizCommand(user)
 			case "/study":
-				err = study(user)
+				study(user)
 			case "/remove":
-				err = remove(user)
+				remove(user)
 			case "/edit":
-				err = edit(user)
+				edit(user)
 			case "/vocbl":
 				user.Chat.SendMessege(fmt.Sprintf("Your vocbl cosists \"%v\" cards😁", len(user.Storage)))
 			case "/vocbl_all":

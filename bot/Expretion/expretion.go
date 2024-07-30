@@ -72,11 +72,14 @@ func (e Expretion) SendCard(bot *tgbotapi.BotAPI, chatId int64) {
 	}
 	card = card[:len(card)-2]
 
-	card += "\n\nExamples:"
-	for _, exapmle := range e.Examples {
-		card += fmt.Sprintf("\n-%v", exapmle)
+	if len(e.Examples) != 0 {
+
+		card += "\n\nExamples:"
+		for _, exapmle := range e.Examples {
+			card += fmt.Sprintf("\n-%v", exapmle)
+		}
+		card = card[:len(card)-1]
 	}
-	card = card[:len(card)-1]
 
 	if e.Notes != "" {
 		card += fmt.Sprintf("\n\nNotes: %v", e.Notes)
@@ -87,6 +90,49 @@ func (e Expretion) SendCard(bot *tgbotapi.BotAPI, chatId int64) {
 	voice := tgbotapi.NewVoiceUpload(chatId, e.PronunciationPath)
 	voice.Caption = card
 
+	_, err := bot.Send(voice)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatId, card)
+		bot.Send(msg)
+	}
+
+}
+
+func (e Expretion) SendCardAddindg(bot *tgbotapi.BotAPI, chatId int64) {
+
+	card := fmt.Sprintf("• %v", strings.ToUpper(e.Data))
+	if e.Pronunciation != "" {
+		card += "\n: " + e.Pronunciation
+	}
+
+	card += "\n\nTranslations: "
+
+	for _, translation := range e.TranslatedData {
+
+		card += strings.ToLower(translation) + ", "
+
+	}
+	card = card[:len(card)-2]
+
+	if len(e.Examples) != 0 {
+
+		card += "\n\nExamples:"
+		for _, exapmle := range e.Examples {
+			card += fmt.Sprintf("\n-%v", exapmle)
+		}
+		card = card[:len(card)-1]
+	}
+
+	if e.Notes != "" {
+		card += fmt.Sprintf("\n\nNotes: %v", e.Notes)
+	}
+
+	card += fmt.Sprintf("\n\nTest date: %v", e.ReapeatDate)
+
+	voice := tgbotapi.NewVoiceUpload(chatId, e.PronunciationPath)
+	voice.Caption = card
+
+	voice.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup([]tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData("Save", "yes"), tgbotapi.NewInlineKeyboardButtonData("Leave", "no")}, []tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData("Fill again", "again")})
 	_, err := bot.Send(voice)
 	if err != nil {
 		msg := tgbotapi.NewMessage(chatId, card)

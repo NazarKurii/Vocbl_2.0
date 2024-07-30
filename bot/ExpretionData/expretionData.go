@@ -311,7 +311,7 @@ func downloadFile(expretion string, url string) error {
 
 func correctExamples(examples []string) []string {
 	var corrextedExamples = make([]string, len(examples))
-	re := regexp.MustCompile(`\{[^}]*\}`)
+	re := regexp.MustCompile(`\[.*?\]|\{[^}]*\}`)
 	for i, example := range examples {
 		corrextedExamples[i] = re.ReplaceAllString(example, "")
 	}
