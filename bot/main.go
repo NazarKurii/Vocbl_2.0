@@ -42,6 +42,7 @@ func main() {
 			} else {
 				user.Chat = Chat.Chat{bot, updates, update.Message.Chat.ID}
 			}
+
 			var err = User.StartEroor
 			switch update.Message.Commands() {
 			case "/start":
@@ -64,6 +65,8 @@ func main() {
 				user.Chat.SendMessege(fmt.Sprintf("Your vocbl cosists \"%v\" cards😁", len(user.Storage)))
 			case "/vocbl_all":
 				vocblAll(user)
+			case "/pronaunce":
+				pronaunce(user)
 			default:
 				user.Chat.SendMessege("Unknown command🥲")
 			}
@@ -84,6 +87,10 @@ func main() {
 		}
 
 	}
+}
+
+func pronaunce(user User.User) {
+	user.FetchPronaunces()
 }
 
 func callBacks(user User.User, data string) {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
 	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
+	"github.com/NazarKurii/Vocbl_2.0.git/ExpretionData"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -45,6 +46,19 @@ func (user User) StartMenue() {
 
 func (user User) Services() {
 	user.Chat.SendCommands([]Chat.MessageComand{Chat.MessageComand{"Add Card", "/add"}, Chat.MessageComand{"Remove Card", "/remove"}, Chat.MessageComand{"Get Quized", "/quiz"}, Chat.MessageComand{"Find Card", "/card"}, Chat.MessageComand{"Test", "/test"}, Chat.MessageComand{"Study", "/study"}}, "What can I do for you😁?", 3)
+}
+
+func (user User) FetchPronaunces() {
+	for i, item := range user.Storage {
+
+		data, err := ExpretionData.GetEpretionData(item.Data, 3)
+		if err != nil {
+			continue
+		}
+		user.Storage[i].PronunciationPath = data.Pronunciation.Path
+
+	}
+	user.SaveUsersData()
 }
 
 func (user User) FindExpretionsByDate(date string, dateType int) ([]Expretion.Expretion, []Expretion.Expretion) {

@@ -201,7 +201,7 @@ func ChoseOptions(user User.User, options []Chat.MessageComand, choise Choise, c
 				continue
 			case Save:
 				translations = append(translations, translation)
-
+				i = -1
 			}
 		case Chat.Start:
 			return nil, User.StartEroor
