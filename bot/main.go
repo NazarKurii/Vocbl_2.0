@@ -44,11 +44,11 @@ func main() {
 			}
 
 			var err = User.StartEroor
-			switch update.Message.Commands() {
+			message := update.Message.Commands()
+			switch message {
 			case "/start":
 				user.StartMenue()
-			case "/add":
-				addExpretion(user)
+
 			case "/card":
 				card(user)
 			case "/test":
@@ -68,7 +68,7 @@ func main() {
 			case "/pronaunce":
 				pronaunce(user)
 			default:
-				user.Chat.SendMessege("Unknown command🥲")
+				addExpretion(user, message)
 			}
 			if err != nil {
 				user.Services()
@@ -254,6 +254,8 @@ func edit(user User.User) error {
 
 		return User.StartEroor
 	}
+
+	userReprly = strings.ToLower(userReprly)
 
 	if oldExpretion, exists := user.FindExpretion(userReprly); exists {
 
@@ -451,10 +453,11 @@ func card(user User.User) error {
 	return nil
 }
 
-func addExpretion(user User.User) error {
+func addExpretion(user User.User, new string) error {
 
-	user.Chat.SendMessege("Expretion to tranlate:")
-	userReprly := user.Chat.GetUpdate()
+	userReprly := new
+
+	go user.Chat.SendStartCommand()
 
 	if userReprly == "/start" {
 		user.Chat.SendMessege("Adding procces was interupted...")
@@ -529,7 +532,6 @@ func addExpretion(user User.User) error {
 
 		user.AddToUserStorage(newExpretion)
 		user.Chat.SendMessege("Translation added")
-		user.Chat.SendMessege("What can I do for you😁?")
 
 	}
 	return nil

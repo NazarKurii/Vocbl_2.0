@@ -79,10 +79,11 @@ func DefineUser(userId int64) (User.User, error) {
 	var storage, st = OpenStorage()
 	defer st.Close()
 	userIndex := slices.IndexFunc(storage, func(u User.User) bool { return u.UserId == userId })
+
 	if userIndex == -1 {
 		return User.User{}, errors.New("User does not exist")
 	}
-	return storage[len(storage)-1], nil
+	return storage[userIndex], nil
 }
 
 func CreateUser(bot *tgbotapi.BotAPI, userId int64, updates tgbotapi.UpdatesChannel) User.User {

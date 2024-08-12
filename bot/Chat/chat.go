@@ -19,6 +19,14 @@ type MessageComand struct {
 	Callback string `json:"call_back"`
 }
 
+func (chat Chat) SendStartCommand() {
+
+	msg := tgbotapi.NewMessage(chat.ChatId, "")
+	msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("/start")))
+	_, _ = chat.Bot.Send(msg)
+}
+
 func (chat Chat) SendCommands(commandMessages []MessageComand, message string, rowAmount int) {
 	var commandsRows = make([][]tgbotapi.KeyboardButton, rowAmount)
 

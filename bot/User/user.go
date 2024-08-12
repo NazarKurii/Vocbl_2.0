@@ -131,6 +131,9 @@ func (user User) SaveUsersData() {
 }
 
 func (user User) FindExpretion(data string) (Expretion.Expretion, bool) {
+
+	data = strings.ToLower(data)
+
 	i := slices.IndexFunc(user.Storage, func(e Expretion.Expretion) bool {
 		return e.Data == data
 	})
@@ -151,6 +154,9 @@ const (
 func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) {
 
 	var totalAnswers = len(expretions)
+	rand.Shuffle(totalAnswers, func(i, j int) {
+		expretions[i], expretions[j] = expretions[j], expretions[i]
+	})
 
 	var fakeAnswers = user.getWrongAnswers(totalAnswers)
 
