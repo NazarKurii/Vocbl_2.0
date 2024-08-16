@@ -50,7 +50,6 @@ func (user User) StartMenue() {
 	menue := []Chat.MessageComand{Chat.MessageComand{"Vocbl services", "services"}, Chat.MessageComand{"How do I use Vocbl?", "how"}}
 
 	user.Chat.SendMessegeComand(menue, "Hello, I'm Vocbl!", 2)
-
 }
 
 func (user User) Services() {
