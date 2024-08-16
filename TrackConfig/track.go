@@ -13,6 +13,7 @@ const (
 )
 
 type Track struct {
+	MainTrack    string
 	FromLanguage FromLanguage
 	ToLanguage   ToLanguage
 }
@@ -32,13 +33,15 @@ type ToLanguage struct {
 type Test interface {
 	InteruptionError() string
 	AfterTestMessage(int) string
+	WarningMessage(int, int) string
+	FailedTestUpdateData()
 }
 
 func (t *FromLanguage) InteruptionError() string {
 	if t.DaylyTestTries == 1 {
 		return "Test was interupted, but you can still try once..."
 	} else {
-		go t.FailedTestUpdateDates()
+
 		return "Test was interupted and that was your last try! Study and try tomorrow..."
 
 	}
@@ -48,7 +51,7 @@ func (t *ToLanguage) InteruptionError() string {
 	if t.DaylyTestTries == 1 {
 		return "Test was interupted, but you can still try once..."
 	} else {
-		go t.FailedTestUpdateDates()
+
 		return "Test was interupted and that was your last try! Study and try tomorrow..."
 
 	}
@@ -91,7 +94,7 @@ func (t *ToLanguage) AfterTestMessage(successRate int) string {
 	return message
 }
 
-func (t FromLanguage) MistakesMessage(maxMistakes, amountOfTestExpretions int) string {
+func (t FromLanguage) WarningMessage(maxMistakes, amountOfTestExpretions int) string {
 	if t.DaylyTestTries == 2 {
 		return fmt.Sprintf("Total quetions: %v\nMax mistakes to have second try: %v\nReady?", amountOfTestExpretions, maxMistakes)
 	} else {
@@ -99,36 +102,12 @@ func (t FromLanguage) MistakesMessage(maxMistakes, amountOfTestExpretions int) s
 	}
 }
 
-func (t ToLanguage) MistakesMessage(maxMistakes, amountOfTestExpretions int) string {
+func (t ToLanguage) WarningMessage(maxMistakes, amountOfTestExpretions int) string {
 	if t.DaylyTestTries == 2 {
 		return fmt.Sprintf("Total quetions: %v\nMax mistakes to have second try: %v\nReady?", amountOfTestExpretions, maxMistakes)
 	} else {
 		return "If you make at least one mistake, you are out🥶"
 	}
-}
-
-func (t *FromLanguage) InteraptingTestMessage(user User.User) {
-
-	if t.DaylyTestTries == 1 {
-		user.Chat.SendMessege("Test was interupted, but you can still try once...")
-
-	} else {
-		user.Chat.SendMessege("Test was interupted and that was your last try! Study and try tomorrow...")
-		t.FailedTestUpdateDates()
-	}
-
-}
-
-func (t *ToLanguage) InteraptingTestMessage(user User.User) {
-
-	if t.DaylyTestTries == 1 {
-		user.Chat.SendMessege("Test was interupted, but you can still try once...")
-
-	} else {
-		user.Chat.SendMessege("Test was interupted and that was your last try! Study and try tomorrow...")
-		t.FailedTestUpdateDates()
-	}
-
 }
 
 const (
@@ -139,7 +118,15 @@ const (
 
 var StartEroor = errors.New("Start error")
 
-func (t *TestData) FailedTestUpdateData() {
+func (t *FromLanguage) FailedTestUpdateData() {
+
+	t.Status = Failed
+	t.DaylyTestTries = 2
+	t.LastFailDate = time.Now().Format("2006.01.02")
+
+}
+
+func (t *ToLanguage) FailedTestUpdateData() {
 
 	t.Status = Failed
 	t.DaylyTestTries = 2
