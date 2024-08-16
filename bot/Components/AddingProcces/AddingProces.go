@@ -70,10 +70,12 @@ func AutoAddindProcces(user User.User, data ExpretionData.ExpretionData, newExpr
 
 	todaysDate := time.Now().Format("2006.01.02")
 	newExpretion.CreationDate = todaysDate
-	newExpretion.ReapeatDate = todaysDate
+	newExpretion.EngTest.ReapeatDate = todaysDate
+	newExpretion.EngTest.Repeated = 0
+	newExpretion.UkrTest.ReapeatDate = todaysDate
+	newExpretion.UkrTest.Repeated = 0
 	newExpretion.PronunciationPath = data.Pronunciation.Path
 	newExpretion.Pronunciation = data.Pronunciation.Phonetic
-	newExpretion.Repeated = 0
 
 	newExpretion.SendCardAddindg(user.Chat.Bot, user.Chat.ChatId)
 

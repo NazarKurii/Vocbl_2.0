@@ -146,7 +146,7 @@ func vocblAll(user User.User) {
 func study(user User.User) error {
 	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"New cards", "new"}, Chat.MessageComand{"Test cards", "test"}}, "Welcome to studying mode!\nWhar are we studying today?", 1)
 
-	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+	StudyChoice := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 		switch update.CallbackQuery.Data {
 		case "new":
 			return new
@@ -157,22 +157,49 @@ func study(user User.User) error {
 		}
 	})
 
-	if status == Chat.Start {
+	if StudyChoice == Chat.Start {
 		user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
 		return User.StartEroor
 	}
 
 	for true {
+
 		var successRate int
-		switch status {
+		var wrongAnswers []Expretion.Expretion
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Eng", "eng"}, Chat.MessageComand{"Ukr", "ukr"}}, "Translate into:", 1)
+
+		var testInfo *User.TestData
+		var testType = "eng"
+		err1 := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+			switch update.CallbackQuery.Data {
+			case "eng":
+				testInfo = &user.TestInfo.EngTest
+				return 1
+			case "ukr":
+				testInfo = &user.TestInfo.UkrTest
+
+				testType = "ukr"
+				return 1
+			default:
+				return -1
+			}
+		})
+
+		if err1 == Chat.Start {
+			return User.StartEroor
+		}
+
+		switch StudyChoice {
 		case new:
+
 			expretiondsToStudy := user.GetNewCardsToStudy()
 			if len(expretiondsToStudy) == 0 {
 				user.Chat.SendMessege("There are no new cards today...")
 				return nil
 			}
 
-			rate, err := user.StudyingProcces(expretiondsToStudy)
+			rate, WA, err := user.StudyingProcces(expretiondsToStudy, testType)
+			wrongAnswers = WA
 			successRate = rate
 			if err != nil {
 				user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
@@ -180,15 +207,17 @@ func study(user User.User) error {
 			}
 
 		case test:
-			if !user.TestInfo.CanPassTest {
 
-				expretiondsToStudy := user.GetTestExpretions()
+			if !testInfo.CanPassTest {
+
+				expretiondsToStudy := user.GetEngTestExpretions()
 				if len(expretiondsToStudy) == 0 {
 					user.Chat.SendMessege("There are no test cards today...")
 					return nil
 				}
 
-				rate, err := user.StudyingProcces(expretiondsToStudy)
+				rate, WA, err := user.StudyingProcces(expretiondsToStudy, testType)
+				wrongAnswers = WA
 				successRate = rate
 				if err != nil {
 					user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
@@ -210,13 +239,15 @@ func study(user User.User) error {
 			rateMessage = fmt.Sprintf("Your success rate is \"%v%%\"\nYou need to work harder...", successRate)
 		}
 
-		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Try again", "true"}, Chat.MessageComand{"Leave", "false"}}, rateMessage, 2)
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Try again", "true"}, Chat.MessageComand{"Leave", "false"}, Chat.MessageComand{"Show wrong answers", "cards"}}, rateMessage, 2)
 		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 			switch update.CallbackQuery.Data {
 			case "true":
 				return True
 			case "false":
 				return False
+			case "cards":
+				return Cards
 			default:
 				return -1
 			}
@@ -229,7 +260,8 @@ func study(user User.User) error {
 		case False:
 			user.Chat.SendMessege("Hope you're ready for tests, othervise I'm kicking your lazy ass😄")
 			return User.StartEroor
-		case True:
+		case Cards:
+			user.SendCards(wrongAnswers)
 		}
 
 	}
@@ -242,6 +274,7 @@ const (
 	Stop
 	new
 	test
+	Cards
 	Continue = -1
 )
 
@@ -638,7 +671,7 @@ func quizCommand(user User.User) error {
 
 	for passTest {
 		user.Chat.SendMessege("Good luck!")
-		var successRate, err = user.Quiz(expretionsToQuize, false)
+		var successRate, _, err = user.Quiz(expretionsToQuize, false, "eng")
 		if err != nil {
 			user.Chat.SendMessege("Quiz procces is over...")
 			return User.StartEroor
@@ -717,78 +750,56 @@ func getExpretionAmount(user User.User) int {
 	return result
 }
 
-func daylyTest(user User.User) error {
-	var testExpretions = user.GetTestExpretions()
+func daylyTest(user User.User) {
+	var test *User.TestData
 
-	var amountOfTestExpretions = len(testExpretions)
-	var maxMistakes = int(float64(amountOfTestExpretions) * 0.2)
-	if amountOfTestExpretions == 0 && user.TestInfo.CanPassTest {
-		user.Chat.SendMessege("There are no cards to test today😢...")
-		return User.StartEroor
-	} else if !user.TestInfo.CanPassTest {
-		user.Chat.SendMessege("You've failed, study and try tomorrow🖕...")
-		return User.StartEroor
+	for true {
+
+		for true {
+			err := user.GreetingTestMessage()
+			if err != nil {
+				return
+			}
+
+			var testExpretions []Expretion.Expretion
+			var testType string
+			status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+				switch update.CallbackQuery.Data {
+				case "eng":
+					testType = "eng"
+					testExpretions = user.GetEngTestExpretions()
+					test = &user.TestInfo.EngTest
+					return 1
+				case "ukr":
+					testType = "ukr"
+					testExpretions = user.GetUkrTestExpretions()
+					test = &user.TestInfo.UkrTest
+					return 1
+				case "leave":
+					return Chat.Start
+				default:
+					return -1
+				}
+			})
+
+			if status == Chat.Start {
+				return
+			}
+
+			for test.DaylyTestTries > 0 {
+				var amountOfTestExpretions = len(testExpretions)
+				go user.Chat.SendMessege(test.MistakesMessage(int(float64(amountOfTestExpretions)*0.2), amountOfTestExpretions))
+
+				successRate, _, err := user.Quiz(testExpretions, true, testType)
+				test.DaylyTestTries--
+				if err != nil {
+					user.Chat.SendMessege(test.InteruptionError())
+				}
+
+				go user.Chat.SendMessege(test.AfterTestMessage(successRate))
+				go user.UpdateTestCardsData(testType, successRate)
+			}
+		}
 	}
-
-	for user.TestInfo.DaylyTestTries > 0 {
-		var testMessage string
-		if user.TestInfo.DaylyTestTries == 2 {
-			testMessage = fmt.Sprintf("Total quetions: %v\nMax mistakes to have second try: %v\nReady?", amountOfTestExpretions, maxMistakes)
-		} else {
-			testMessage = "Last chance, ready?"
-		}
-		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Start", "start"}, Chat.MessageComand{"Leave", "leave"}}, testMessage, 1)
-
-		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
-			switch update.CallbackQuery.Data {
-			case "start":
-				return True
-			case "leave":
-				return False
-			default:
-				return -1
-			}
-		})
-
-		if status == False || status == Chat.Start {
-
-			return User.StartEroor
-		}
-
-		successRate, err := user.Quiz(testExpretions, true)
-		user.TestInfo.DaylyTestTries--
-		go user.SaveUsersData()
-		if err != nil {
-			if user.TestInfo.DaylyTestTries == 1 {
-				user.Chat.SendMessege("Test was interupted, but you can still try once...")
-				return User.StartEroor
-			} else {
-				user.Chat.SendMessege("Test was interupted and that was your last try! Study and try tomorrow...")
-				go user.FailedTestUpdateDates()
-
-			}
-
-			return User.StartEroor
-
-		}
-		if successRate == 100 {
-			if user.TestInfo.DaylyTestTries == 1 {
-
-				user.Chat.SendMessege("Good job! Next test is yours also😁")
-			} else {
-				user.Chat.SendMessege("If I have to give you another chance next time, I'll kick your lazy ass... You've passed. Go study!")
-			}
-			go user.PassedTestUpdateDates()
-			return nil
-		} else if successRate >= 80 && user.TestInfo.DaylyTestTries > 0 {
-			user.Chat.SendMessege("You failed, but you haven't made anough mistakes so I could kick your ass out of here😒...")
-		} else {
-			break
-		}
-
-	}
-	go user.FailedTestUpdateDates()
-	user.Chat.SendMessege("You've failed, study and try tomorrow🖕...")
-	return nil
 
 }

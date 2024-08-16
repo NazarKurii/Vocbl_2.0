@@ -17,21 +17,29 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-type User struct {
-	UserId  int64                 `json:"user_id"`
-	Storage []Expretion.Expretion `json:"storage"`
-	Chat    Chat.Chat             `json:"chat"`
+const (
+	Passed = iota
+	Failed
+	Prepared
+)
 
-	TestInfo struct {
-		DaylyTestTries int    `json:"dayly_test_tries"`
-		LastFailDate   string `json:"last_fail_date"`
-		CanPassTest    bool   `json:"can_pass_test"`
-	}
+type User struct {
+	UserId     int64                 `json:"user_id"`
+	Storage    []Expretion.Expretion `json:"storage"`
+	Chat       Chat.Chat             `json:"chat"`
+	Tracks     map[string]Track.Track
+	TracksKeys []string
+	TestsLeft  int
+}
+
+type Test interface {
+	InteruptionError() string
 }
 
 const (
 	CreationDate = iota
-	TestDate
+	UkrTestDate
+	EngTestDate
 )
 
 var StartEroor = errors.New("Start error")
@@ -72,8 +80,14 @@ func (user User) FindExpretionsByDate(date string, dateType int) ([]Expretion.Ex
 				expretionsToRepeat = append(expretionsToRepeat, expretion)
 			}
 
-		case TestDate:
-			if expretion.ReapeatDate == date {
+		case EngTestDate:
+			if expretion.EngTest.ReapeatDate == date {
+				expretionsToRepeat = append(expretionsToRepeat, expretion)
+			} else {
+				expretionsToStay = append(expretionsToStay, expretion)
+			}
+		case UkrTestDate:
+			if expretion.UkrTest.ReapeatDate == date {
 				expretionsToRepeat = append(expretionsToRepeat, expretion)
 			} else {
 				expretionsToStay = append(expretionsToStay, expretion)
@@ -151,16 +165,23 @@ const (
 	correct
 )
 
-func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) {
+func (user User) SendCards(expretions []Expretion.Expretion) {
+	for _, expretion := range expretions {
+		expretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
+	}
+}
+
+func (user User) Quiz(expretions []Expretion.Expretion, test bool, testType string) (int, []Expretion.Expretion, error) {
 
 	var totalAnswers = len(expretions)
 	rand.Shuffle(totalAnswers, func(i, j int) {
 		expretions[i], expretions[j] = expretions[j], expretions[i]
 	})
 
-	var fakeAnswers = user.getWrongAnswers(totalAnswers)
+	var fakeAnswers = user.getWrongAnswers(totalAnswers, testType)
 
 	var wrongAnswers int
+	var wrongCards []Expretion.Expretion
 
 	for i, experetion := range expretions {
 
@@ -176,7 +197,7 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) 
 			}
 		})
 		if status == Chat.Start {
-			return 0, StartEroor
+			return 0, nil, StartEroor
 		}
 
 		if status == showAnswers {
@@ -197,18 +218,19 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) 
 				}
 			}
 
-			answers := []Chat.MessageComand{Chat.MessageComand{experetion.Data, "true"}, Chat.MessageComand{fakeAnswer2, "false"}, Chat.MessageComand{fakeUnswer1, "false"}}
+			answers := []Chat.MessageComand{Chat.MessageComand{experetion.Data, experetion.Data}, Chat.MessageComand{fakeAnswer2, fakeAnswer2}, Chat.MessageComand{fakeUnswer1, fakeAnswer2}, Chat.MessageComand{"Not sure", "false"}}
 
 			rand.Shuffle(3, func(i, j int) {
 				answers[i], answers[j] = answers[j], answers[i]
 			})
-			user.Chat.SendMessegeComand(answers, "Choose correct answer:", 3)
+			user.Chat.SendMessegeComand(answers, "Choose correct answer:", 4)
 			status = user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 				switch update.CallbackQuery.Data {
-				case "true":
+				case experetion.Data:
 					return correct
 				case "false":
-
+					return notSure
+				case fakeAnswer2:
 					return notSure
 				default:
 					return -1
@@ -216,7 +238,7 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) 
 			})
 		}
 		if status == Chat.Start {
-			return 0, StartEroor
+			return 0, nil, StartEroor
 		}
 
 		if status == correct {
@@ -225,6 +247,7 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) 
 		} else {
 			wrongAnswers++
 			if !test {
+				wrongCards = append(wrongCards, experetion)
 
 				experetion.SendCard(user.Chat.Bot, user.Chat.ChatId)
 
@@ -245,18 +268,18 @@ func (user User) Quiz(expretions []Expretion.Expretion, test bool) (int, error) 
 			})
 			if status == Chat.Start {
 
-				return 0, StartEroor
+				return 0, nil, StartEroor
 
 			}
 		}
 
 	}
 
-	return 100 - int(float64(wrongAnswers)/float64(totalAnswers)*100.0), nil
+	return 100 - int(float64(wrongAnswers)/float64(totalAnswers)*100.0), wrongCards, nil
 
 }
 
-func (user User) getWrongAnswers(amount int) []string {
+func (user User) getWrongAnswers(amount int, testType string) []string {
 
 	var totalExpretionAmount = len(user.Storage)
 
@@ -267,66 +290,174 @@ func (user User) getWrongAnswers(amount int) []string {
 	}
 	var wrongAnswers = make([]string, amount)
 
-	for i := 0; i < amount; i++ {
-		wrongAnswers[i] = user.Storage[rand.Int63n(int64(amount))].Data
+	if testType == "eng" {
 
+		for i := 0; i < amount; i++ {
+
+			wrongAnswers[i] = user.Storage[rand.Int63n(int64(amount))].Data
+
+		}
+	} else {
+		for i := 0; i < amount; i++ {
+
+			wrongAnswers[i] = strings.Join(user.Storage[rand.Int63n(int64(amount))].TranslatedData, ", ")
+
+		}
 	}
 	return wrongAnswers
 }
 
-func (user User) GetTestExpretions() []Expretion.Expretion {
+func (user User) GetEngTestExpretions() []Expretion.Expretion {
 	var testExpretions []Expretion.Expretion
 
 	for _, expretion := range user.Storage {
-		if expretion.ReapeatDate == time.Now().Format("2006.01.02") {
+		if expretion.EngTest.ReapeatDate == time.Now().Format("2006.01.02") {
 			testExpretions = append(testExpretions, expretion)
 		}
 	}
 	return testExpretions
 }
 
-func (user User) PassedTestUpdateDates() {
-	for i, expretion := range user.Storage {
-		if expretion.ReapeatDate == time.Now().Format("2006.01.02") {
-			user.Storage[i].Repeated++
-			user.Storage[i].DefineRepeatDate()
-		}
-	}
-	user.TestInfo.DaylyTestTries = 2
-	user.SaveUsersData()
-}
+func (user User) GetUkrTestExpretions() []Expretion.Expretion {
+	var testExpretions []Expretion.Expretion
 
-func (user User) FailedTestUpdateDates() {
-	for i, expretion := range user.Storage {
-		if expretion.ReapeatDate == time.Now().Format("2006.01.02") {
-			user.Storage[i].Repeated = 1
+	for _, expretion := range user.Storage {
+		if expretion.UkrTest.ReapeatDate == time.Now().Format("2006.01.02") {
 
+			expretion.Data, expretion.TranslatedData = strings.Join(expretion.TranslatedData, ", "), []string{expretion.Data}
+			testExpretions = append(testExpretions, expretion)
 		}
 	}
 
-	user.TestInfo.CanPassTest = false
-	user.TestInfo.DaylyTestTries = 2
-	user.TestInfo.LastFailDate = time.Now().Format("2006.01.02")
+	return testExpretions
+}
+
+func (user User) GreetingTestMessage() error {
+	eng, ukr := user.TestInfo.EngTest.Status, user.TestInfo.UkrTest.Status
+	var newErr = errors.New("Can't pass any of the tests")
+
+	switch {
+	case ukr == Failed && eng == Failed:
+		user.Chat.SendMessege("You have failed both your tests, loser...")
+		return newErr
+	case ukr == Failed && eng == Passed:
+		user.Chat.SendMessege("You have passed \"Eng test\",  thank God you've passed the \"Ukr test\" at least...")
+		return newErr
+	case ukr == Failed && eng == Prepared:
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Start", "eng"}, Chat.MessageComand{"Leave", "leave"}}, fmt.Sprintf("You have failed \"Ukr test\", hope you won't fuck the \"Eng\" one up... \n\n✅Tries left:%v\n\n Hit start when you're ready😒", user.TestInfo.EngTest.DaylyTestTries), 1)
+		return nil
+	case ukr == Passed && eng == Failed:
+		user.Chat.SendMessege("You have passed \"Ukr test\",  thank God you've passed the \"Ukr test\" at least...")
+		return newErr
+	case ukr == Passed && eng == Passed:
+		user.Chat.SendMessege("You have passed both tests🥰")
+		return newErr
+	case ukr == Passed && eng == Prepared:
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Start", "eng"}, Chat.MessageComand{"Leave", "leave"}}, fmt.Sprintf("You have passed \"Ukr test\", don't fuck the \"Eng\" one up... \n\n✅Tries left:%v\n\n Hit start when you're ready😒", user.TestInfo.EngTest.DaylyTestTries), 1)
+		return nil
+	case ukr == Prepared && eng == Failed:
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Start", "eng"}, Chat.MessageComand{"Leave", "leave"}}, fmt.Sprintf("You have failed \"Eng test\", hope you won't fuck the \"Ukr\" one up... \n\n✅Tries left:%v\n\n Hit start when you're ready😒", user.TestInfo.UkrTest.DaylyTestTries), 1)
+		return nil
+	case ukr == Prepared && eng == Passed:
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Start", "eng"}, Chat.MessageComand{"Leave", "leave"}}, fmt.Sprintf("You have passed \"Eng test\", don't fuck the \"Ukr\" one up... \n\n✅Tries left:%v\n\n Hit start when you're ready😒", user.TestInfo.UkrTest.DaylyTestTries), 1)
+		return nil
+	case ukr == Prepared && eng == Prepared:
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Eng", "eng"}, Chat.MessageComand{"Ukr", "ukr"}, Chat.MessageComand{"Leave", "leave"}}, fmt.Sprintf("Don`t fuck the tests up...\n\"Eng\" - choose English translation of Ukrainian word\n\"Ukr\" - choose Ukrainian translation of English word \n\n✅Eng tries left:%v\n✅Ukr tries left:%v", user.TestInfo.EngTest.DaylyTestTries, user.TestInfo.UkrTest.DaylyTestTries), 2)
+		return nil
+	default:
+		user.Chat.SendMessege("Something went wrong🥶.\nTry again)")
+		return newErr
+	}
+}
+
+func (user User) PassedEngTestUpdateDates() {
+	for i, expretion := range user.Storage {
+		if expretion.EngTest.ReapeatDate == time.Now().Format("2006.01.02") {
+			user.Storage[i].EngTest.Repeated++
+			user.Storage[i].DefineEngRepeatDate()
+		}
+	}
+	user.TestInfo.EngTest.Status = Passed
+	user.TestInfo.EngTest.DaylyTestTries = 2
 	user.SaveUsersData()
 }
 
-func (user User) StudyingProcces(expretions []Expretion.Expretion) (int, error) {
-	for _, expretion := range expretions {
-		expretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
+func (user User) PassedUkrTestUpdateDates() {
+	for i, expretion := range user.Storage {
+		if expretion.UkrTest.ReapeatDate == time.Now().Format("2006.01.02") {
+			user.Storage[i].UkrTest.Repeated++
+			user.Storage[i].DefineUkrRepeatDate()
+		}
 	}
-	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Get quized", "true"}}, "When you are finished remembering cards press button below🙃", 1)
-	status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+	user.TestInfo.UkrTest.Status = Passed
+	user.TestInfo.EngTest.DaylyTestTries = 2
+	user.SaveUsersData()
+}
+
+func (user *User) UpdateTestCardsData(testType string, successRate int) {
+
+	if successRate == 100 {
+		if testType == "ukr" {
+			go user.PassedUkrTestUpdateDates()
+		} else {
+			go user.PassedEngTestUpdateDates()
+		}
+	} else {
+		var test *TestData
+		if testType == "ukr" {
+			test = &user.TestInfo.UkrTest
+		} else {
+			test = &user.TestInfo.EngTest
+		}
+
+		if test.DaylyTestTries == 0 {
+			test.FailedTestUpdateData()
+
+		}
+	}
+}
+
+func (user User) StudyingProcces(expretions []Expretion.Expretion, testType string) (int, []Expretion.Expretion, error) {
+	user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Get quized", "quize"}, Chat.MessageComand{"See cards", "cards"}}, "Want to see cards first or pass a quize?", 1)
+	var seeCards bool
+	user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
 		switch update.CallbackQuery.Data {
-		case "true":
-			return 0
+		case "quize":
+			return 1
+		case "cards":
+			seeCards = true
+			return 1
 		default:
 			return -1
 		}
 	})
-	if status == Chat.Start {
-		return 0, StartEroor
+	if seeCards {
+
+		for _, expretion := range expretions {
+			expretion.SendCard(user.Chat.Bot, user.Chat.ChatId)
+		}
+		user.Chat.SendMessegeComand([]Chat.MessageComand{Chat.MessageComand{"Get quized", "true"}, Chat.MessageComand{"Leave", "false"}}, "When you are finished remembering cards, you can be quized🙃", 1)
+		status := user.Chat.GetUpdateFunc(func(update tgbotapi.Update) int {
+			switch update.CallbackQuery.Data {
+			case "true":
+				return 0
+			case "false":
+				return Chat.Start
+			default:
+				return -1
+			}
+		})
+		if status == Chat.Start {
+			return 0, nil, StartEroor
+		}
 	}
-	return user.Quiz(expretions, false)
+	if testType == "ukr" {
+
+		for _, expretion := range expretions {
+			expretion.Data, expretion.TranslatedData = strings.Join(expretion.TranslatedData, ", "), []string{expretion.Data}
+		}
+	}
+	return user.Quiz(expretions, false, testType)
 }
 
 func (user User) GetNewCardsToStudy() []Expretion.Expretion {

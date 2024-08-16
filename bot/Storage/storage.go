@@ -21,27 +21,50 @@ func VerifyStorage() {
 	todaysDate, _ := time.Parse("2006.01.02", time.Now().Format("2006.01.02"))
 	formatedTodaysDate := todaysDate.Format("2006.01.02")
 	for j, user := range storageData {
-		if !user.TestInfo.CanPassTest {
-			if date, _ := time.Parse("2006.01.02", user.TestInfo.LastFailDate); date.Before(todaysDate) {
-				storageData[j].TestInfo.CanPassTest = true
-				storageData[j].TestInfo.DaylyTestTries = 2
+		if !user.TestInfo.EngTest.Passed && !user.TestInfo.EngTest.Failed {
+			if date, _ := time.Parse("2006.01.02", user.TestInfo.EngTest.LastFailDate); date.Before(todaysDate) {
+				storageData[j].TestInfo.EngTest.Passed, storageData[j].TestInfo.EngTest.Failed = false, false
+				storageData[j].TestInfo.EngTest.DaylyTestTries = 2
+			}
+
+		}
+		if !user.TestInfo.UkrTest.Passed && !user.TestInfo.UkrTest.Failed {
+			if date, _ := time.Parse("2006.01.02", user.TestInfo.UkrTest.LastFailDate); date.Before(todaysDate) {
+				storageData[j].TestInfo.UkrTest.Passed, storageData[j].TestInfo.UkrTest.Failed = false, false
+				storageData[j].TestInfo.UkrTest.DaylyTestTries = 2
 			}
 
 		}
 		for i, expretion := range user.Storage {
 
-			repeatDate, _ := time.Parse("2006.01.02", expretion.ReapeatDate)
+			repeatDate, _ := time.Parse("2006.01.02", expretion.EngTest.ReapeatDate)
 
 			if repeatDate.Before(todaysDate) {
-				storageData[j].Storage[i].ReapeatDate = formatedTodaysDate
+				storageData[j].Storage[i].EngTest.ReapeatDate = formatedTodaysDate
 
 			}
 
-			if expretion.Repeated == 0 {
+			if expretion.EngTest.Repeated == 0 {
 				creationDate, _ := time.Parse("2006.01.02", expretion.CreationDate)
 				if creationDate.Before(todaysDate) {
 					storageData[j].Storage[i].CreationDate = formatedTodaysDate
-					storageData[j].Storage[i].Repeated = 0
+					storageData[j].Storage[i].EngTest.Repeated = 0
+
+				}
+			}
+
+			repeatDate, _ = time.Parse("2006.01.02", expretion.UkrTest.ReapeatDate)
+
+			if repeatDate.Before(todaysDate) {
+				storageData[j].Storage[i].UkrTest.ReapeatDate = formatedTodaysDate
+
+			}
+
+			if expretion.UkrTest.Repeated == 0 {
+				creationDate, _ := time.Parse("2006.01.02", expretion.CreationDate)
+				if creationDate.Before(todaysDate) {
+					storageData[j].Storage[i].CreationDate = formatedTodaysDate
+					storageData[j].Storage[i].UkrTest.Repeated = 0
 
 				}
 			}
@@ -98,13 +121,13 @@ func CreateUser(bot *tgbotapi.BotAPI, userId int64, updates tgbotapi.UpdatesChan
 		},
 
 		TestInfo: struct {
-			DaylyTestTries int    `json:"dayly_test_tries"`
-			LastFailDate   string `json:"last_fail_date"`
-			CanPassTest    bool   `json:"can_pass_test"`
+			EngTest   User.TestData
+			UkrTest   User.TestData
+			TestsLeft int
 		}{
-			2,
-			"",
-			true,
+			EngTest:   User.TestData{2, "2006.01.01", false, false},
+			UkrTest:   User.TestData{2, "2006.01.01", false, false},
+			TestsLeft: 2,
 		},
 	}
 
