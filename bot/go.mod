@@ -1,4 +1,4 @@
-module github.com/NazarKurii/Vocbl_2.0.git
+module Vocbl_2.0
 
 go 1.22
 

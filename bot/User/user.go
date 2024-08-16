@@ -11,30 +11,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
-	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
-	"github.com/NazarKurii/Vocbl_2.0.git/ExpretionData"
-	Track "github.com/NazarKurii/Vocbl_2.0.git/TrackConfig"
+	"Vocbl_2.0/Chat"
+	"Vocbl_2.0/Expretion"
+	"Vocbl_2.0/ExpretionData"
+
+	Track "Vocbl_2.0/TrackConfig"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-const (
-	Passed = iota
-	Failed
-	Prepared
-)
-
 type User struct {
-	UserId     int64                 `json:"user_id"`
-	Storage    []Expretion.Expretion `json:"storage"`
-	Chat       Chat.Chat             `json:"chat"`
+	UserId     int64     `json:"user_id"`
+	Chat       Chat.Chat `json:"chat"`
 	Tracks     map[string]Track.Track
 	TracksKeys []string
 	TestsLeft  int
-}
-
-type Test interface {
-	InteruptionError() string
 }
 
 const (

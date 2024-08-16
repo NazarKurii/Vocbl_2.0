@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NazarKurii/Vocbl_2.0.git/Chat"
-	"github.com/NazarKurii/Vocbl_2.0.git/Expretion"
-	"github.com/NazarKurii/Vocbl_2.0.git/ExpretionData"
-	"github.com/NazarKurii/Vocbl_2.0.git/User"
+	"Vocbl_2.0/Chat"
+	"Vocbl_2.0/Expretion"
+	"Vocbl_2.0/ExpretionData"
+	"Vocbl_2.0/User"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
